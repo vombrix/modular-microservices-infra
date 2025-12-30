@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microservices Infrastructure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border-radius: 25px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .service-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .service-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .service-card p {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .service-card a {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: background 0.3s;
+            width: fit-content;
+
+        }
+
+        .service-card a:hover {
+            background: #764ba2;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #e9ecef;
+            color: #666;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .tech-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Microservices Infrastructure</h1>
+            <p class="subtitle">Production-Grade Local Development Environment</p>
+            <div class="status">✓ System Online</div>
+        </div>
+
+        <div class="services">
+            <div class="service-card">
+                <h3>📊 Grafana</h3>
+                <p>Unified observability dashboard for metrics, logs, and traces</p>
+                <a href="https://grafana.darkstar.local" target="_blank">Open Grafana →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>📈 Prometheus</h3>
+                <p>Metrics collection and time-series database</p>
+                <a href="https://prometheus.darkstar.local" target="_blank">Open Prometheus →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🔀 Kong Admin</h3>
+                <p>API Gateway administration interface</p>
+                <div class="buttons-container">
+                    <a href="https://kong-api.darkstar.local:8001" target="_blank">Open Admin API →</a>
+                    <a href="https://kong.darkstar.local:8002" target="_blank" style="margin-left: 10px;">Open GUI →</a>
+                </div>
+            </div>
+
+            <div class="service-card">
+                <h3>🔐 Keycloak</h3>
+                <p>Identity and access management platform</p>
+                <a href="https://keycloak.darkstar.local" target="_blank">Open Keycloak →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>📨 Kafka UI</h3>
+                <p>Web interface for Apache Kafka management</p>
+                <a href="https://kafka-ui.darkstar.local" target="_blank">Open Kafka UI →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🗄️ MinIO</h3>
+                <p>S3-compatible object storage console</p>
+                <a href="https://minio.darkstar.local:9001" target="_blank">Open MinIO →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🐳 Portainer</h3>
+                <p>Container management interface</p>
+                <a href="https://portainer.darkstar.local" target="_blank">Open Portainer →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🔧 Jenkins</h3>
+                <p>CI/CD automation server</p>
+                <a href="https://jenkins.darkstar.local" target="_blank">Open Jenkins →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🔧 Kibana</h3>
+                <p>CI/CD automation server</p>
+                <a href="https://kibana.darkstar.local" target="_blank">Open Kibana →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🔧 Pyroscope</h3>
+                <p>CI/CD automation server</p>
+                <a href="https://pyroscope.darkstar.local" target="_blank">Open Pyroscope →</a>
+            </div>
+
+            <div class="service-card">
+                <h3>🔧 cAdvisor</h3>
+                <p>CI/CD automation server</p>
+                <a href="https://cadvisor.darkstar.local" target="_blank">Open cAdvisor →</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <h3 style="margin-bottom: 20px; color: #333;">Technology Stack</h3>
+            <div class="tech-stack">
+                <span class="tech-badge">PostgreSQL 15</span>
+                <span class="tech-badge">MongoDB 6</span>
+                <span class="tech-badge">Redis 7</span>
+                <span class="tech-badge">Elasticsearch 8</span>
+                <span class="tech-badge">Kafka 3.6 (KRaft)</span>
+                <span class="tech-badge">Kong 3.4</span>
+                <span class="tech-badge">Keycloak 23</span>
+                <span class="tech-badge">Prometheus</span>
+                <span class="tech-badge">Loki</span>
+                <span class="tech-badge">Tempo</span>
+                <span class="tech-badge">Grafana</span>
+            </div>
+            <p style="margin-top: 30px;">
+                <strong>5 Modular Stacks</strong> | <strong>20+ Services</strong> | <strong>Production Ready</strong>
+            </p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                Centralized PostgreSQL • ZooKeeper-Free Kafka • Full LGTM Stack • DB-Backed Kong
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

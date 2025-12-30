@@ -1,0 +1,196 @@
+# ==============================================================================
+# NGINX CONFIGURATION TEMPLATE
+# ==============================================================================
+# Reverse proxy configuration for the data, observability, and ops stacks.
+# Variables like ${DOMAIN_NAME} are substituted at runtime.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 05-OPS SERVICE PROXIES
+# ------------------------------------------------------------------------------
+
+# Jenkins
+server {
+    listen 80;
+    server_name jenkins.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://jenkins:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ------------------------------------------------------------------------------
+# 04-GATEWAY SERVICE PROXIES
+# ------------------------------------------------------------------------------
+
+# Kong Admin
+server {
+    listen 80;
+    server_name kong.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://kong:8002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Keycloak
+server {
+    listen 80;
+    server_name keycloak.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://keycloak:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ------------------------------------------------------------------------------
+# 03-OBSERVABILITY SERVICE PROXIES
+# ------------------------------------------------------------------------------
+
+# Prometheus
+server {
+    listen 80;
+    server_name prometheus.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://prometheus:9090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Kafka UI
+server {
+    listen 80;
+    server_name kafka-ui.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://kafka-ui:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Grafana
+server {
+    listen 80;
+    server_name grafana.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://grafana:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Kibana
+server {
+    listen 80;
+    server_name kibana.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://kibana:5601;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Pyroscope
+server {
+    listen 80;
+    server_name pyroscope.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://pyroscope:4040;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Grafana Agent
+server {
+    listen 80;
+    server_name agent.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://grafana-agent:12345;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# cAdvisor
+server {
+    listen 80;
+    server_name cadvisor.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://cadvisor:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Portainer
+server {
+    listen 80;
+    server_name portainer.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://portainer:9000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ------------------------------------------------------------------------------
+# 01-DATA SERVICE PROXIES
+# ------------------------------------------------------------------------------
+
+# MinIO Console
+server {
+    listen 80;
+    server_name minio.${DOMAIN_NAME};
+
+    location / {
+        proxy_pass http://minio:9001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
