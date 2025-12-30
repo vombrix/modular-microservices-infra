@@ -1,0 +1,72 @@
+# ==============================================================================
+# ELASTICSEARCH CONFIGURATION
+# ==============================================================================
+# Main configuration for the Elasticsearch node.
+# Defines cluster membership, network settings, and discovery.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# CLUSTER & NODE IDENTITY
+# ------------------------------------------------------------------------------
+cluster.name: ${ELASTIC_CLUSTER_NAME}
+node.name: elasticsearch
+node.attr.rack: r1
+
+# ------------------------------------------------------------------------------
+# NODE ROLES
+# ------------------------------------------------------------------------------
+# Configures this node to handle all roles for a single-node setup.
+node.roles: [master, data, ingest]
+
+# ------------------------------------------------------------------------------
+# PATHS
+# ------------------------------------------------------------------------------
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# ------------------------------------------------------------------------------
+# MEMORY & BOOTSTRAP
+# ------------------------------------------------------------------------------
+# Lock memory to prevent swapping (performance critical).
+bootstrap.memory_lock: true
+
+# ------------------------------------------------------------------------------
+# NETWORK CONFIGURATION
+# ------------------------------------------------------------------------------
+network.host: 0.0.0.0
+# http.port: 9200 (Default)
+# transport.port: 9300 (Default)
+
+# ------------------------------------------------------------------------------
+# DISCOVERY & CLUSTER FORMATION
+# ------------------------------------------------------------------------------
+# Use single-node discovery for development/testing environments.
+discovery.type: ${ELASTIC_DISCOVERY_TYPE}
+
+# ------------------------------------------------------------------------------
+# SAFETY SETTINGS
+# ------------------------------------------------------------------------------
+# Prevent accidental deletion of all indices via widcards.
+action.destructive_requires_name: false
+
+# ------------------------------------------------------------------------------
+# SECURITY (X-PACK)
+# ------------------------------------------------------------------------------
+xpack.security.enabled: ${ELASTIC_XPACK_SECURITY}
+xpack.security.enrollment.enabled: false
+
+# SSL/TLS disabled for internal non-prod usage
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# License settings
+xpack.license.self_generated.type: basic
+
+# ------------------------------------------------------------------------------
+# MONITORING & PERFORMANCE
+# ------------------------------------------------------------------------------
+xpack.monitoring.collection.enabled: true
+
+# Index buffer size (typically 10-30% of heap)
+indices.memory.index_buffer_size: 20%
+indices.queries.cache.size: 10%

@@ -1,0 +1,229 @@
+# ==============================================================================
+# 01-DATA STACK
+# ==============================================================================
+# Core data services: Postgres, MongoDB, Redis, Elasticsearch, MinIO.
+# ==============================================================================
+name: 01-data
+
+# ------------------------------------------------------------------------------
+# NETWORKS
+# ------------------------------------------------------------------------------
+networks:
+  default:
+    name: global-infra
+    external: true
+
+# ------------------------------------------------------------------------------
+# VOLUMES
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+  mongo_data:
+  mongo_config:
+  redis_data:
+  elasticsearch_data:
+  minio_data:
+
+# ------------------------------------------------------------------------------
+# SERVICES
+# ------------------------------------------------------------------------------
+services:
+
+  # ----------------------------------------------------------------------------
+  # PostgreSQL
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_admin_password}
+      POSTGRES_DB: ${POSTGRES_DB:-main_db}
+      # Additional DBs and Users for other services (via init script)
+      KONG_DB_NAME: ${KONG_DB_NAME:-kong}
+      KONG_DB_USER: ${KONG_DB_USER:-kong}
+      KONG_DB_PASSWORD: ${KONG_DB_PASSWORD:-change_me_kong_password}
+      KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:-keycloak}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-change_me_keycloak_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d
+      - ./postgres/config/postgresql.conf:/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=postgres"
+      - "com.microservices.tier=data"
+
+  # ----------------------------------------------------------------------------
+  # MongoDB
+  # ----------------------------------------------------------------------------
+  mongo:
+    image: mongo:${MONGO_VERSION:-6.0}
+    container_name: mongo
+    restart: unless-stopped
+    environment:
+      MONGO_USER: ${MONGO_USER:-mongoadmin}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-change_me_mongo_password}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./mongo/init:/docker-entrypoint-initdb.d
+      - ./mongo/config/mongod.conf:/etc/mongod.conf
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=mongo"
+      - "com.microservices.tier=data"
+
+  # ----------------------------------------------------------------------------
+  # Redis
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:${REDIS_VERSION:-7.2-alpine}
+    container_name: redis
+    restart: unless-stopped
+    environment:
+      REDIS_USER: ${REDIS_USER:-redis_user}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis_password}
+    command: >
+      sh -c "
+      echo 'user default on >\${REDIS_PASSWORD} ~* +@all' > /usr/local/etc/redis/users.acl &&
+      echo 'user \${REDIS_USER} on >\${REDIS_PASSWORD} ~* +@all' >> /usr/local/etc/redis/users.acl &&
+      redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+      "
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/config/redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=redis"
+      - "com.microservices.tier=data"
+
+  # ----------------------------------------------------------------------------
+  # Elasticsearch
+  # ----------------------------------------------------------------------------
+  elasticsearch:
+    image: elasticsearch:${ELASTICSEARCH_VERSION:-8.11.1}
+    container_name: elasticsearch
+    restart: unless-stopped
+    environment:
+      - ELASTIC_CLUSTER_NAME=${ELASTIC_CLUSTER_NAME:-docker-cluster}
+      - ELASTIC_DISCOVERY_TYPE=${ELASTIC_DISCOVERY_TYPE:-single-node}
+      - ELASTIC_XPACK_SECURITY=${ELASTIC_XPACK_SECURITY:-false}
+      - "ES_JAVA_OPTS=${ELASTIC_JAVA_OPTS:- -Xms512m -Xmx512m}"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./elasticsearch/init/init.sh:/usr/share/elasticsearch/init/init.sh
+      - ../03-observability/kibana:/usr/share/elasticsearch/kibana-token
+    command: >
+      /bin/bash -c "
+      if [ -f /usr/share/elasticsearch/init/init.sh ]; then
+        /usr/share/elasticsearch/init/init.sh;
+      fi;
+      /usr/local/bin/docker-entrypoint.sh elasticsearch
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=elasticsearch"
+      - "com.microservices.tier=data"
+
+  # ----------------------------------------------------------------------------
+  # MinIO (S3 Compatible Storage)
+  # ----------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console
+    volumes:
+      - minio_data:/data
+      - ./minio/config/config.json:/root/.minio/config.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=minio"
+      - "com.microservices.tier=data"
+
+  # ----------------------------------------------------------------------------
+  # MinIO Init (Bucket Creation)
+  # ----------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+      OBSERVABILITY_USER: ${OBSERVABILITY_USER:-observability-service}
+      OBSERVABILITY_SERVICE_PASSWORD: ${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+      APP_SERVICE_PASSWORD: ${APP_SERVICE_PASSWORD:-change_me}
+      BACKUP_SERVICE_PASSWORD: ${BACKUP_SERVICE_PASSWORD:-change_me}
+    volumes:
+      - ./minio/init/create-bucket.sh:/init/create-bucket.sh
+    entrypoint: ["/bin/bash", "/init/create-bucket.sh"]
+    restart: on-failure:5
+    labels:
+      - "com.microservices.service=minio-init"
+      - "com.microservices.tier=data"
