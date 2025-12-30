@@ -1,0 +1,184 @@
+# ==============================================================================
+# 02-MESSAGING STACK
+# ==============================================================================
+# Messaging services: Kafka (KRaft), Kafka UI.
+# ==============================================================================
+name: 02-messaging
+
+# ------------------------------------------------------------------------------
+# NETWORKS
+# ------------------------------------------------------------------------------
+networks:
+  default:
+    name: global-infra
+    external: true
+
+# ------------------------------------------------------------------------------
+# VOLUMES
+# ------------------------------------------------------------------------------
+volumes:
+  kafka_data:
+  kafka_secrets:
+
+# ------------------------------------------------------------------------------
+# SERVICES
+# ------------------------------------------------------------------------------
+services:
+
+  # ----------------------------------------------------------------------------
+  # Kafka (KRaft Mode)
+  # ----------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:${KAFKA_VERSION:-7.5.0}
+    container_name: kafka
+    restart: unless-stopped
+    environment:
+      # Node Identity
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID:-PW00lLjRTV2a3+4CsrLlAg==}'
+      
+      # Listeners
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      
+      # Topic Defaults
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      
+      # Storage & Threads
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_NUM_NETWORK_THREADS: 3
+      KAFKA_NUM_IO_THREADS: 8
+      
+      # Performance Tuning
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+      
+      # Metrics (JMX)
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: kafka
+      KAFKA_JMX_OPTS: '-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=9101'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - kafka_secrets:/etc/kafka/secrets
+      - ./kafka/kraft:/etc/kafka/kraft:ro
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"         # Internal
+      - "${KAFKA_EXTERNAL_PORT:-29092}:29092" # External
+      - "9093:9093"                        # Controller
+      - "9102:9101"                        # JMX Metrics
+    command: >
+      bash -c "
+      if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+        echo 'Formatting Kafka storage directory for KRaft...';
+        kafka-storage format -t $${CLUSTER_ID} -c /etc/kafka/kraft/cluster.properties;
+      fi;
+      echo 'Starting Kafka...';
+      /etc/confluent/docker/run
+      "
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=kafka"
+      - "com.microservices.tier=messaging"
+      - "com.microservices.mode=kraft"
+
+  # ----------------------------------------------------------------------------
+  # Kafka UI
+  # ----------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      # Config via env for cluster connection
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9101
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      AUTH_TYPE: 'DISABLED'
+      SERVER_SERVLET_CONTEXT_PATH: '/'
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_PROVECTUS: INFO
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: PLAINTEXT
+    volumes:
+      - ./kafka/kafka-ui/config.yml:/etc/kafkaui/dynamic_config.yaml:ro
+    ports:
+      - "${KAFKA_UI_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=kafka-ui"
+      - "com.microservices.tier=messaging"
+
+  # ----------------------------------------------------------------------------
+  # Kafka Initialization/Setup
+  # ----------------------------------------------------------------------------
+  kafka-init:
+    image: confluentinc/cp-kafka:${KAFKA_VERSION:-7.5.0}
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: /bin/bash
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - kafka_secrets:/etc/kafka/secrets
+    command: >
+      -c "
+      echo 'Waiting for Kafka to be fully ready...' &&
+      sleep 10 &&
+      echo 'Creating default topics...' &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 3 --topic events &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 3 --topic logs &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 3 --topic metrics &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 3 --topic traces &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 3 --topic notifications &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 3 --topic user-activity &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic __consumer_offsets --config cleanup.policy=compact &&
+      echo 'Topics created successfully:' &&
+      kafka-topics --list --bootstrap-server kafka:9092 &&
+      echo '' &&
+      echo 'Kafka cluster info:' &&
+      kafka-topics --describe --bootstrap-server kafka:9092
+      "
+    labels:
+      - "com.microservices.service=kafka-init"
+      - "com.microservices.tier=messaging"
