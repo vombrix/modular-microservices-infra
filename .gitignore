@@ -1,0 +1,139 @@
+# =========================================
+# Environment & Secrets
+# =========================================
+.env
+.env.local
+.env.*.local
+*.secret
+secrets/
+*.key
+*.crt
+*.pem
+*.p12
+*.token
+portainer_passwd
+
+# =========================================
+# Data Directories (Volumes)
+# =========================================
+01-data/postgres/data/
+01-data/mongo/data/
+01-data/redis/data/
+01-data/elasticsearch/data/
+01-data/minio/data/
+
+02-messaging/kafka/data/
+02-messaging/zookeeper/data/
+02-messaging/zookeeper/logs/
+
+03-observability/prometheus/data/
+03-observability/loki/data/
+03-observability/tempo/data/
+03-observability/grafana/data/
+03-observability/kibana/data/
+03-observability/kibana/kibana.token
+
+04-gateway/keycloak/data/
+
+05-ops/jenkins/data/
+05-ops/portainer/data/
+05-ops/trivy/cache/
+05-ops/mailpit/auth
+
+# =========================================
+# Logs
+# =========================================
+*.log
+logs/
+*.log.*
+
+# =========================================
+# Temporary Files
+# =========================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =========================================
+# IDE / Editor
+# =========================================
+.vscode/
+.idea/
+*.iml
+*.sublime-*
+.project
+.classpath
+.settings/
+
+# =========================================
+# Docker
+# =========================================
+.docker/
+
+# =========================================
+# Backup Files
+# =========================================
+*.bak
+*.backup
+*.dump
+*.sql.gz
+backup-*/
+backups/
+
+# =========================================
+# OS Specific
+# =========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# =========================================
+# Node (if using Node-based tools)
+# =========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================================
+# Python (if using Python scripts)
+# =========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+ENV/
+
+# =========================================
+# Testing
+# =========================================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# =========================================
+# Keep empty config directories
+# =========================================
+!01-data/postgres/init/.gitkeep
+!01-data/mongo/init/.gitkeep
+!04-gateway/kong/plugins/.gitkeep
+!04-gateway/nginx/ssl/.gitkeep
