@@ -1,0 +1,449 @@
+# ==============================================================================
+# 03-OBSERVABILITY STACK
+# ==============================================================================
+# LGTM Stack (Loki, Grafana, Tempo, Mimir) + Prometheus + OTEL.
+# ==============================================================================
+name: 03-observability
+
+# ------------------------------------------------------------------------------
+# NETWORKS
+# ------------------------------------------------------------------------------
+networks:
+  default:
+    name: global-infra
+    external: true
+
+# ------------------------------------------------------------------------------
+# VOLUMES
+# ------------------------------------------------------------------------------
+volumes:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
+  kibana_data:
+  mimir_data:
+  pyroscope_data:
+
+# ------------------------------------------------------------------------------
+# SERVICES
+# ------------------------------------------------------------------------------
+services:
+
+  # ----------------------------------------------------------------------------
+  # Mimir (Metrics Storage)
+  # ----------------------------------------------------------------------------
+  mimir:
+    image: grafana/mimir:${MIMIR_VERSION:-2.11.0}
+    container_name: mimir
+    restart: unless-stopped
+    user: root
+    command:
+      - '-target=all,alertmanager'
+      - '-config.file=/etc/mimir/mimir-config.yml'
+      - '-config.expand-env=true'
+    environment:
+      - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-minioadmin}
+    volumes:
+      - ./mimir/config/mimir-config.yml:/etc/mimir/mimir-config.yml:ro
+      - ./mimir/alertmanager-fallback.yml:/etc/mimir/alertmanager-fallback.yml:ro
+      - mimir_data:/data/mimir
+    ports:
+      - "${MIMIR_PORT:-9009}:9009"
+      - "${MIMIR_GRPC_PORT:-9095}:9095"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9009/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=mimir"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Prometheus (Metrics Collection)
+  # ----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION:-v2.48.0}
+    container_name: prometheus
+    restart: unless-stopped
+    user: root
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-30d}'
+      - '--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-50GB}'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ./prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=prometheus"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Loki (Log Aggregation)
+  # ----------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:${LOKI_VERSION:-2.9.0}
+    container_name: loki
+    restart: unless-stopped
+    user: root
+    command: "-config.file=/etc/loki/loki-config.yml -config.expand-env=true"
+    environment:
+      - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+    volumes:
+      - ./loki/config/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=loki"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Tempo (Distributed Tracing)
+  # ----------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:${TEMPO_VERSION:-2.3.0}
+    container_name: tempo
+    restart: unless-stopped
+    user: root
+    command: ["-config.file=/etc/tempo/tempo-config.yml", "-config.expand-env=true"]
+    volumes:
+      - ./tempo/config/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
+      - tempo_data:/var/tempo
+    environment:
+      - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+    ports:
+      - "${TEMPO_PORT:-3200}:3200"
+      - "${TEMPO_OTLP_GRPC_PORT:-4317}:4317"
+      - "${TEMPO_OTLP_HTTP_PORT:-4318}:4318"
+      - "9411:9411"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=tempo"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Pyroscope (Continuous Profiling)
+  # ----------------------------------------------------------------------------
+  pyroscope:
+    image: grafana/pyroscope:${PYROSCOPE_VERSION:-1.4.0}
+    container_name: pyroscope
+    restart: unless-stopped
+    user: root
+    command:
+      - '-config.file=/etc/pyroscope/pyroscope-config.yml'
+      - '-config.expand-env=true'
+    environment:
+      - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+    volumes:
+      - ./pyroscope/config/pyroscope-config.yml:/etc/pyroscope/pyroscope-config.yml:ro
+      - pyroscope_data:/data
+    ports:
+      - "${PYROSCOPE_PORT:-4040}:4040"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4040/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=pyroscope"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # cAdvisor (Container Metrics)
+  # ----------------------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:${CADVISOR_VERSION:-v0.47.2}
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    command:
+      - '--housekeeping_interval=30s'
+      - '--docker_only=true'
+      - '--disable_metrics=percpu,sched,tcp,udp,disk,diskIO,hugetlb,referenced_memory,cpu_topology,resctrl'
+      - '--v=0'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - ./cadvisor/machine-id:/etc/machine-id:ro
+    ports:
+      - "${CADVISOR_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=cadvisor"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Node Exporter (Host Metrics)
+  # ----------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-v1.7.0}
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--web.disable-exporter-metrics'
+      - '--collector.disable-defaults'
+      - '--collector.cpu'
+      - '--collector.meminfo'
+      - '--collector.loadavg'
+      - '--collector.diskstats'
+      - '--collector.filesystem'
+      - '--collector.netdev'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "${NODE_EXPORTER_PORT:-9100}:9100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9100/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=node-exporter"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # OpenTelemetry Collector
+  # ----------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.91.0}
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yml", "--feature-gates=service.profilesSupport"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_admin_password}
+      POSTGRES_DB: ${POSTGRES_DB:-main_db}
+    volumes:
+      - ./otel-collector/config/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./otel-collector/passwd:/etc/passwd:ro
+    ports:
+      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
+      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
+      - "${OTEL_COLLECTOR_METRICS_PORT:-8888}:8888"
+      - "8889:8889"
+      - "${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133"
+      - "55679:55679"
+    user: "0"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=otel-collector"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Kibana (Elasticsearch Dashboard)
+  # ----------------------------------------------------------------------------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-8.11.0}
+    container_name: kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana.${DOMAIN_NAME:-darkstar.local}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=5601
+      - SERVER_PUBLICBASEURL=http://kibana.${DOMAIN_NAME:-darkstar.local}
+      - XPACK_SECURITY_ENABLED=${KIBANA_SECURITY_ENABLED:-false}
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-a7e8c9d1e2f3a4b5c6d7e8f9a0b1c2d3}
+      - XPACK_REPORTING_ENCRYPTIONKEY=${KIBANA_REPORTING_KEY:-b8f9a0c1d2e3f4a5b6c7d8e9f0a1b2c3}
+      - XPACK_SECURITY_ENCRYPTIONKEY=${KIBANA_SECURITY_KEY:-c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4}
+      - MONITORING_UI_CONTAINER_ELASTICSEARCH_ENABLED=true
+      - LOGGING_DEST=stdout
+      - LOGGING_VERBOSE=false
+      - ELASTICSEARCH_REQUESTTIMEOUT=30000
+      - ELASTICSEARCH_SHARDTIMEOUT=30000
+      - KIBANA_DEFAULTAPPID=home
+      - ELASTICSEARCH_SERVICE_TOKEN_FILE=/run/secrets/kibana.token
+      - I18N_LOCALE=en
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - ./kibana/kibana.token:/run/secrets/kibana.token:ro
+      - ./kibana/data:/usr/share/kibana/data
+    ports:
+      - "5601:5601"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=kibana"
+      - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Grafana (Metrics Dashboard)
+  # ----------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-10.2.0}
+    container_name: grafana
+    restart: unless-stopped
+    user: root
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_secure_pass_123}
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_SERVER_DOMAIN: localhost
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_INSTALL_PLUGINS: ${GRAFANA_INSTALL_PLUGINS:-grafana-clock-panel,grafana-simple-json-datasource,grafana-pyroscope-datasource}
+      GF_FEATURE_TOGGLES_ENABLE: tempoSearch,tempoBackendSearch,traceToProfiles
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_LOG_LEVEL: info
+      GF_LOG_MODE: console
+      GF_DATABASE_TYPE: sqlite3
+      GF_DATABASE_PATH: /var/lib/grafana/grafana.db
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=grafana"
+  # ----------------------------------------------------------------------------
+  # Grafana Agent
+  # ----------------------------------------------------------------------------
+  grafana-agent:
+    image: grafana/agent:${GRAFANA_AGENT_VERSION:-latest}
+    container_name: grafana-agent
+    restart: unless-stopped
+    volumes:
+      - ./grafana-agent/config/agent.river:/etc/agent/agent.river:ro
+    environment:
+      - AGENT_MODE=flow
+    ports:
+      - "${GRAFANA_AGENT_PORT:-12345}:12345"
+    command:
+      - 'run'
+      - '/etc/agent/agent.river'
+      - '--server.http.listen-addr=0.0.0.0:12345'
+    healthcheck:
+      test: ["CMD", "pidof", "grafana-agent"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=grafana-agent"
+      - "com.microservices.tier=observability"

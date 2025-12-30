@@ -1,0 +1,42 @@
+# ==============================================================================
+# GRAFANA AGENT CONFIGURATION
+# ==============================================================================
+# Configuration for Grafana Agent metrics collection.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# SERVER CONFIGURATION
+# ------------------------------------------------------------------------------
+server:
+  log_level: info
+
+# ------------------------------------------------------------------------------
+# METRICS CONFIGURATION
+# ------------------------------------------------------------------------------
+metrics:
+  global:
+    scrape_interval: 60s
+  wal_directory: /tmp/grafana-agent-wal
+
+# ------------------------------------------------------------------------------
+# INTEGRATIONS
+# ------------------------------------------------------------------------------
+integrations:
+  node_exporter:
+    enabled: true
+  process_exporter:
+    enabled: true
+
+logs:
+  configs:
+    - name: default
+      clients:
+        - url: http://loki:3100/loki/api/v1/push
+      scrape_configs:
+        - job_name: otlp
+          otlp:
+            protocols:
+              grpc:
+                endpoint: 0.0.0.0:4317
+              http:
+                endpoint: 0.0.0.0:4318

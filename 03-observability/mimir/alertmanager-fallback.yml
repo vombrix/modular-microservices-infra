@@ -1,0 +1,54 @@
+# ==============================================================================
+# ALERTMANAGER FALLBACK CONFIGURATION
+# ==============================================================================
+# Default configuration for Alertmanager in case the primary config fails.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# GLOBAL SETTINGS
+# ------------------------------------------------------------------------------
+global:
+  resolve_timeout: 5m
+
+# ------------------------------------------------------------------------------
+# ROUTING
+# ------------------------------------------------------------------------------
+route:
+  group_by: ["alertname", "cluster", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: "default-receiver"
+
+  routes:
+    - match:
+        severity: critical
+      receiver: "critical-receiver"
+      continue: true
+
+    - match:
+        severity: warning
+      receiver: "warning-receiver"
+
+# ------------------------------------------------------------------------------
+# RECEIVERS
+# ------------------------------------------------------------------------------
+receivers:
+  - name: "default-receiver"
+    # Add default receiver config here (e.g. email, slack, webhooks)
+
+  - name: "critical-receiver"
+    # Add critical alert receiver config here
+
+  - name: "warning-receiver"
+    # Add warning alert receiver config here
+
+# ------------------------------------------------------------------------------
+# INHIBITION RULES
+# ------------------------------------------------------------------------------
+inhibit_rules:
+  - source_match:
+      severity: "critical"
+    target_match:
+      severity: "warning"
+    equal: ["alertname", "cluster", "service"]

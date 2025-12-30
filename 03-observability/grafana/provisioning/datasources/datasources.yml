@@ -1,0 +1,114 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s
+      queryTimeout: 60s
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+    version: 1
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "trace_id=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+    version: 1
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    uid: tempo
+    editable: true
+    jsonData:
+      httpMethod: GET
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ["job", "instance", "pod", "namespace"]
+        mappedTags: [{ key: "service.name", value: "service_name" }]
+        mapTagNamesEnabled: true
+        spanStartTimeShift: "1h"
+        spanEndTimeShift: "1h"
+        filterByTraceID: true
+        filterBySpanID: false
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags: [{ key: "service.name", value: "job" }]
+        spanStartTimeShift: "1h"
+        spanEndTimeShift: "1h"
+      tracesToProfiles:
+        datasourceUid: pyroscope
+        tags: [{ key: "service.name", value: "service_name" }]
+        profileTypeId: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+        customQuery: true
+        query: '{service_name="${__span.tags["service.name"]}"}'
+      serviceMap:
+        datasourceUid: prometheus
+      search:
+        hide: false
+      nodeGraph:
+        enabled: true
+      lokiSearch:
+        datasourceUid: loki
+    version: 1
+
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "[logs-]YYYY.MM.DD"
+    editable: true
+    jsonData:
+      esVersion: "8.0.0"
+      timeField: "@timestamp"
+      interval: Daily
+      logMessageField: message
+      logLevelField: level
+    version: 1
+
+  - name: Mimir
+    type: prometheus
+    access: proxy
+    url: http://mimir:9009/prometheus
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s
+      queryTimeout: 60s
+    version: 1
+
+  - name: Alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://mimir:9009
+    editable: true
+    jsonData:
+      implementation: mimir
+      handleGrafanaManagedAlerts: true
+    version: 1
+
+  - name: Pyroscope
+    type: grafana-pyroscope-datasource
+    access: proxy
+    url: http://pyroscope:4040
+    uid: pyroscope
+    editable: true
+    jsonData:
+      minStep: 15s
+    version: 1
