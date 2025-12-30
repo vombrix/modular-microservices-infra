@@ -1,0 +1,8 @@
+configuration-as-code
+docker-plugin
+git
+workflow-aggregator
+job-dsl
+matrix-auth
+maven-plugin
+jdk-tool

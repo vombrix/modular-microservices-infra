@@ -1,0 +1,71 @@
+# ==============================================================================
+# JENKINS CONFIGURATION AS CODE (JCasC)
+# ==============================================================================
+# Declarative configuration for Jenkins controller.
+# Defines users, security, clouds, tools, and jobs.
+# ==============================================================================
+
+jenkins:
+  # ------------------------------------------------------------------------------
+  # SYSTEM CONFIGURATION
+  # ------------------------------------------------------------------------------
+  systemMessage: "Jenkins configured automatically by JCasC"
+  numExecutors: 0
+  mode: NORMAL
+  scmCheckoutRetryCount: 3
+  disableRememberMe: false
+
+  # ------------------------------------------------------------------------------
+  # SECURITY REALM (Authentication)
+  # ------------------------------------------------------------------------------
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: ${JENKINS_ADMIN_ID}
+          password: ${JENKINS_ADMIN_PASSWORD}
+
+  # ------------------------------------------------------------------------------
+  # AUTHORIZATION
+  # ------------------------------------------------------------------------------
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+  # ------------------------------------------------------------------------------
+  # AGENTS & CLOUDS
+  # ------------------------------------------------------------------------------
+  nodes:
+    - permanent:
+        labelString: "linux docker"
+        mode: NORMAL
+        name: "agent-1"
+        numExecutors: 2
+        remoteFS: "/home/jenkins/agent"
+        launcher:
+          inbound:
+            workDirSettings:
+              disabled: false
+              failIfWorkDirIsMissing: false
+              internalDir: "remoting"
+              workDirPath: "/home/jenkins/agent"
+
+# ------------------------------------------------------------------------------
+# UNCLASSIFIED SETTINGS
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# UNCLASSIFIED SETTINGS
+# ------------------------------------------------------------------------------
+unclassified:
+  location:
+    url: http://jenkins:8080/
+
+# ------------------------------------------------------------------------------
+# TOOL CONFIGURATION
+# ------------------------------------------------------------------------------
+tool:
+  git:
+    installations:
+      - name: "Default"
+        home: "/usr/bin/git"

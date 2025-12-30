@@ -1,0 +1,281 @@
+# ==============================================================================
+# 05-OPS STACK
+# ==============================================================================
+# Operations & CI/CD: Jenkins, Portainer, Security Tools (Trivy, Semgrep), Registry.
+# ==============================================================================
+name: 05-ops
+
+# ------------------------------------------------------------------------------
+# NETWORKS
+# ------------------------------------------------------------------------------
+networks:
+  default:
+    name: global-infra
+    external: true
+
+# ------------------------------------------------------------------------------
+# VOLUMES
+# ------------------------------------------------------------------------------
+volumes:
+  jenkins_data:
+  jenkins_agent_data:
+  portainer_data:
+  trivy_cache:
+  registry_data:
+
+# ------------------------------------------------------------------------------
+# SERVICES
+# ------------------------------------------------------------------------------
+services:
+
+  # ----------------------------------------------------------------------------
+  # Jenkins Controller
+  # ----------------------------------------------------------------------------
+  jenkins:
+    image: jenkins/jenkins:${JENKINS_VERSION:-latest}
+    container_name: jenkins
+    restart: unless-stopped
+    privileged: true
+    user: root
+    environment:
+      JAVA_OPTS: >-
+        -Djenkins.install.runSetupWizard=false
+        -Djenkins.security.ApiTokenProperty.showTokenToAdmins=true
+        -Dhudson.footerURL=http://jenkins:8080
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_USER:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin_secure_pass_123}
+      DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_CERT_PATH: ""
+      DOCKER_TLS_VERIFY: ""
+      JENKINS_JAVA_OPTS: -Djenkins.model.JenkinsLocationConfiguration.url=http://jenkins:8080
+    command: >
+      bash -c "jenkins-plugin-cli -f /usr/share/jenkins/ref/plugins.txt && /usr/local/bin/jenkins.sh"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker:ro
+      - ./jenkins/jenkins-security.groovy:/usr/share/jenkins/ref/init.groovy.d/security.groovy
+      - ./jenkins/init_node.groovy:/usr/share/jenkins/ref/init.groovy.d/init_node.groovy
+      - ./jenkins/plugins.txt:/usr/share/jenkins/ref/plugins.txt
+      - jenkins_agent_data:/var/jenkins_home/agent_share
+    ports:
+      - "${JENKINS_HTTP_PORT:-8082}:8080"
+      - "${JENKINS_AGENT_PORT:-50000}:50000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://jenkins:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=jenkins"
+      - "com.microservices.tier=ops"
+
+  # ----------------------------------------------------------------------------
+  # Jenkins Agent
+  # ----------------------------------------------------------------------------
+  jenkins-agent:
+    image: jenkins/inbound-agent:latest
+    container_name: jenkins-agent
+    restart: unless-stopped
+    depends_on:
+      jenkins:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for secret file..."
+        while [ ! -f /home/jenkins/agent/secret-docker-agent-1 ]; do sleep 2; done
+        SECRET=$$(cat /home/jenkins/agent/secret-docker-agent-1)
+        echo "Secret found. Starting agent..."
+        exec java -jar /usr/share/jenkins/agent.jar -url http://jenkins:8080 -name docker-agent-1 -secret $$SECRET -webSocket
+    environment:
+      - JENKINS_AGENT_WORKDIR=/home/jenkins/agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jenkins_agent_data:/home/jenkins/agent
+    tmpfs:
+      - /home/jenkins/.jenkins:uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'agent.jar' /proc/1/cmdline || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
+  # ----------------------------------------------------------------------------
+  # Portainer (Container Management)
+  # ----------------------------------------------------------------------------
+  portainer:
+    image: portainer/portainer-ce:${PORTAINER_VERSION:-2.19.4-alpine}
+    container_name: portainer
+    restart: unless-stopped
+    command: -H unix:///var/run/docker.sock --admin-password-file /run/secrets/portainer_passwd
+    environment:
+      PORTAINER_HTTP_ENABLED: "true"
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./portainer/portainer_passwd:/run/secrets/portainer_passwd:ro
+    ports:
+      - "${PORTAINER_HTTP_PORT:-9002}:9000"
+      - "${PORTAINER_HTTPS_PORT:-9443}:9443"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=portainer"
+      - "com.microservices.tier=ops"
+
+  # ----------------------------------------------------------------------------
+  # Portainer Agent
+  # ----------------------------------------------------------------------------
+  portainer-agent:
+    image: portainer/agent:${PORTAINER_VERSION:-2.19.4-alpine}
+    container_name: portainer-agent
+    restart: unless-stopped
+    environment:
+      AGENT_CLUSTER_ADDR: tasks.portainer-agent
+      CAP_HOST_MANAGEMENT: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/volumes:/var/lib/docker/volumes:ro
+      - /:/host:ro
+    ports:
+      - "9003:9001"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=portainer-agent"
+      - "com.microservices.tier=ops"
+
+  # ----------------------------------------------------------------------------
+  # Trivy (Security Scanner)
+  # ----------------------------------------------------------------------------
+  trivy:
+    image: aquasec/trivy:${TRIVY_VERSION:-0.48.0}
+    container_name: trivy
+    restart: unless-stopped
+    command: server --listen 0.0.0.0:8080
+    environment:
+      TRIVY_CACHE_DIR: /root/.cache/trivy
+      TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db
+      TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db
+      TRIVY_LISTEN: 0.0.0.0:8080
+      TRIVY_DEBUG: "false"
+      TRIVY_TIMEOUT: 5m
+      TRIVY_SKIP_DB_UPDATE: "false"
+      TRIVY_SKIP_JAVA_DB_UPDATE: "false"
+    volumes:
+      - trivy_cache:/root/.cache/trivy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=trivy"
+      - "com.microservices.tier=ops"
+
+  # ----------------------------------------------------------------------------
+  # Semgrep (SAST Scanner)
+  # ----------------------------------------------------------------------------
+  semgrep:
+    image: returntocorp/semgrep:latest
+    container_name: semgrep
+    stdin_open: true
+    tty: true
+    entrypoint: ["semgrep"]
+    command: ["ci"]
+    volumes:
+      - ../:/src:ro
+    environment:
+      - SEMGREP_APP_TOKEN=${SEMGREP_APP_TOKEN}
+    working_dir: /src
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=semgrep"
+      - "com.microservices.tier=ops"
+    profiles:
+      - tools
+
+  # ----------------------------------------------------------------------------
+  # Private Docker Registry
+  # ----------------------------------------------------------------------------
+  registry:
+    image: registry:latest
+    container_name: docker-registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry_data:/var/lib/registry
+    ports:
+      - "5001:5000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=registry"
+      - "com.microservices.tier=ops"
+    profiles:
+      - registry
+
+  # ----------------------------------------------------------------------------
+  # MailHog (Email Testing)
+  # ----------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
+    environment:
+      MP_UI_AUTH_FILE: /auth
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_WEB_PORT:-8025}:8025"
+    volumes:
+      - ./mailpit/auth:/auth:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=mailpit"
+      - "com.microservices.tier=ops"
+
