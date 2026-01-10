@@ -12,6 +12,7 @@ secrets/
 *.p12
 *.token
 portainer_passwd
+passwd
 
 # =========================================
 # Data Directories (Volumes)
