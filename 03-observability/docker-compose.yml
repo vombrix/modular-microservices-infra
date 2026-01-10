@@ -346,7 +346,7 @@ services:
     volumes:
       - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - ./kibana/kibana.token:/run/secrets/kibana.token:ro
-      - ./kibana/data:/usr/share/kibana/data
+      - kibana_data:/usr/share/kibana/data
     ports:
       - "5601:5601"
     deploy:
