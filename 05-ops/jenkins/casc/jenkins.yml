@@ -37,9 +37,9 @@ jenkins:
   # ------------------------------------------------------------------------------
   nodes:
     - permanent:
-        labelString: "linux docker"
+        labelString: "docker-agent-1 linux docker"
         mode: NORMAL
-        name: "agent-1"
+        name: "docker-agent-1"
         numExecutors: 2
         remoteFS: "/home/jenkins/agent"
         launcher:

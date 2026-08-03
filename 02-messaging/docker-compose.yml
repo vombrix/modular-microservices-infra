@@ -37,7 +37,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
-      CLUSTER_ID: '${KAFKA_CLUSTER_ID:-PW00lLjRTV2a3+4CsrLlAg==}'
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID:-m4ZxI6qIQvWOea8emAKqJw}'
       
       # Listeners
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
@@ -154,6 +154,7 @@ services:
   kafka-init:
     image: confluentinc/cp-kafka:${KAFKA_VERSION:-7.5.0}
     container_name: kafka-init
+    restart: "no"
     depends_on:
       kafka:
         condition: service_healthy

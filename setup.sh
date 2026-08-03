@@ -137,8 +137,6 @@ directories=(
     # 02-messaging stack
     "02-messaging/kafka/data"
     "02-messaging/kafka/config"
-    "02-messaging/zookeeper/data"
-    "02-messaging/zookeeper/logs"
     
     # 03-observability stack
     "03-observability/prometheus/data"
@@ -201,7 +199,6 @@ config_files=(
     
     # Prometheus
     "03-observability/prometheus/config/prometheus.yml"
-    "03-observability/prometheus/alerts/rules.yml"
     
     # Loki
     "03-observability/loki/config/loki-config.yaml"

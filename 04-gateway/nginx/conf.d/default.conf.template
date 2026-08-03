@@ -6,6 +6,39 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# DEFAULT CATCH-ALL & HEALTHCHECK
+# ------------------------------------------------------------------------------
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Proxy Keycloak auth endpoints if accessed via localhost
+    location ~* ^/(realms|resources|admin|js)/ {
+        set $upstream_keycloak http://keycloak:8080;
+        proxy_pass $upstream_keycloak;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+    }
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+    }
+}
+
+# ------------------------------------------------------------------------------
 # 05-OPS SERVICE PROXIES
 # ------------------------------------------------------------------------------
 
@@ -15,7 +48,8 @@ server {
     server_name jenkins.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://jenkins:8080;
+        set $upstream_jenkins http://jenkins:8080;
+        proxy_pass $upstream_jenkins;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -23,17 +57,67 @@ server {
     }
 }
 
+# Mailpit (Email UI)
+server {
+    listen 80;
+    server_name mailpit.${DOMAIN_NAME};
+
+    location / {
+        set $upstream_mailpit http://mailpit:8025;
+        proxy_pass $upstream_mailpit;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
 # ------------------------------------------------------------------------------
 # 04-GATEWAY SERVICE PROXIES
 # ------------------------------------------------------------------------------
 
-# Kong Admin
+# Kong Manager (Admin GUI & API)
 server {
     listen 80;
     server_name kong.${DOMAIN_NAME};
 
+    # Kong Manager GUI
     location / {
-        proxy_pass http://kong:8002;
+        set $upstream_kong http://kong:8002;
+        proxy_pass $upstream_kong;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Kong Admin API
+server {
+    listen 80;
+    server_name admin-kong.${DOMAIN_NAME};
+
+    location / {
+        set $upstream_kong_admin http://kong:8001;
+        proxy_pass $upstream_kong_admin;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Kong Proxy (API Gateway)
+server {
+    listen 80;
+    server_name api-kong.${DOMAIN_NAME};
+
+    location / {
+        set $upstream_kong_proxy http://kong:8000;
+        proxy_pass $upstream_kong_proxy;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -44,14 +128,19 @@ server {
 # Keycloak
 server {
     listen 80;
-    server_name keycloak.${DOMAIN_NAME};
+    server_name keycloak.${DOMAIN_NAME} auth.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://keycloak:8080;
+        set $upstream_keycloak http://keycloak:8080;
+        proxy_pass $upstream_keycloak;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
     }
 }
 
@@ -65,7 +154,8 @@ server {
     server_name prometheus.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://prometheus:9090;
+        set $upstream_prometheus http://prometheus:9090;
+        proxy_pass $upstream_prometheus;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -79,7 +169,8 @@ server {
     server_name kafka-ui.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://kafka-ui:8080;
+        set $upstream_kafkaui http://kafka-ui:8080;
+        proxy_pass $upstream_kafkaui;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -93,7 +184,8 @@ server {
     server_name grafana.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://grafana:3000;
+        set $upstream_grafana http://grafana:3000;
+        proxy_pass $upstream_grafana;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -107,7 +199,8 @@ server {
     server_name kibana.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://kibana:5601;
+        set $upstream_kibana http://kibana:5601;
+        proxy_pass $upstream_kibana;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -121,7 +214,8 @@ server {
     server_name pyroscope.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://pyroscope:4040;
+        set $upstream_pyroscope http://pyroscope:4040;
+        proxy_pass $upstream_pyroscope;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -129,13 +223,14 @@ server {
     }
 }
 
-# Grafana Agent
+# Grafana Alloy
 server {
     listen 80;
     server_name agent.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://grafana-agent:12345;
+        set $upstream_alloy http://grafana-alloy:12345;
+        proxy_pass $upstream_alloy;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -149,7 +244,8 @@ server {
     server_name cadvisor.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://cadvisor:8080;
+        set $upstream_cadvisor http://cadvisor:8080;
+        proxy_pass $upstream_cadvisor;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -163,7 +259,8 @@ server {
     server_name portainer.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://portainer:9000;
+        set $upstream_portainer http://portainer:9000;
+        proxy_pass $upstream_portainer;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -184,7 +281,8 @@ server {
     server_name minio.${DOMAIN_NAME};
 
     location / {
-        proxy_pass http://minio:9001;
+        set $upstream_minio http://minio:9001;
+        proxy_pass $upstream_minio;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

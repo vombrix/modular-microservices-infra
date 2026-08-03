@@ -23,6 +23,7 @@ volumes:
   redis_data:
   elasticsearch_data:
   minio_data:
+  kibana_token:
 
 # ------------------------------------------------------------------------------
 # SERVICES
@@ -38,23 +39,23 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_admin_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:? Check .env file}
       POSTGRES_DB: ${POSTGRES_DB:-main_db}
       # Additional DBs and Users for other services (via init script)
       KONG_DB_NAME: ${KONG_DB_NAME:-kong}
       KONG_DB_USER: ${KONG_DB_USER:-kong}
-      KONG_DB_PASSWORD: ${KONG_DB_PASSWORD:-change_me_kong_password}
+      KONG_DB_PASSWORD: ${KONG_DB_PASSWORD:? Check .env file}
       KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:-keycloak}
       KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-change_me_keycloak_password}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:? Check .env file}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
       - ./postgres/config/postgresql.conf:/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-main_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,7 +77,9 @@ services:
     restart: unless-stopped
     environment:
       MONGO_USER: ${MONGO_USER:-mongoadmin}
-      MONGO_PASSWORD: ${MONGO_PASSWORD:-change_me_mongo_password}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:? Check .env file}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-mongoadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:? Check .env file}
     ports:
       - "27017:27017"
     volumes:
@@ -85,7 +88,7 @@ services:
       - ./mongo/init:/docker-entrypoint-initdb.d
       - ./mongo/config/mongod.conf:/etc/mongod.conf
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD-SHELL", "mongosh -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval \"db.adminCommand('ping')\" --quiet"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -107,7 +110,7 @@ services:
     restart: unless-stopped
     environment:
       REDIS_USER: ${REDIS_USER:-redis_user}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis_password}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:? Check .env file}
     command: >
       sh -c "
       echo 'user default on >\${REDIS_PASSWORD} ~* +@all' > /usr/local/etc/redis/users.acl &&
@@ -120,7 +123,7 @@ services:
       - redis_data:/data
       - ./redis/config/redis.conf:/usr/local/etc/redis/redis.conf
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -140,6 +143,14 @@ services:
     image: elasticsearch:${ELASTICSEARCH_VERSION:-8.11.1}
     container_name: elasticsearch
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
     environment:
       - ELASTIC_CLUSTER_NAME=${ELASTIC_CLUSTER_NAME:-docker-cluster}
       - ELASTIC_DISCOVERY_TYPE=${ELASTIC_DISCOVERY_TYPE:-single-node}
@@ -151,7 +162,8 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
       - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
       - ./elasticsearch/init/init.sh:/usr/share/elasticsearch/init/init.sh
-      - ../03-observability/kibana:/usr/share/elasticsearch/kibana-token
+      - kibana_token:/usr/share/elasticsearch/kibana-token
+
     command: >
       /bin/bash -c "
       if [ -f /usr/share/elasticsearch/init/init.sh ]; then
@@ -177,13 +189,13 @@ services:
   # MinIO (S3 Compatible Storage)
   # ----------------------------------------------------------------------------
   minio:
-    image: minio/minio:latest
+    image: minio/minio:${MINIO_VERSION:-RELEASE.2024-01-01T16-36-33Z}
     container_name: minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:? Check .env file}
     ports:
       - "9000:9000" # API
       - "9001:9001" # Console
@@ -191,7 +203,7 @@ services:
       - minio_data:/data
       - ./minio/config/config.json:/root/.minio/config.json
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -215,15 +227,15 @@ services:
         condition: service_healthy
     environment:
       MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:? Check .env file}
       OBSERVABILITY_USER: ${OBSERVABILITY_USER:-observability-service}
-      OBSERVABILITY_SERVICE_PASSWORD: ${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
-      APP_SERVICE_PASSWORD: ${APP_SERVICE_PASSWORD:-change_me}
-      BACKUP_SERVICE_PASSWORD: ${BACKUP_SERVICE_PASSWORD:-change_me}
+      OBSERVABILITY_SERVICE_PASSWORD: ${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
+      APP_SERVICE_PASSWORD: ${APP_SERVICE_PASSWORD:? Check .env file}
+      BACKUP_SERVICE_PASSWORD: ${BACKUP_SERVICE_PASSWORD:? Check .env file}
     volumes:
       - ./minio/init/create-bucket.sh:/init/create-bucket.sh
     entrypoint: ["/bin/bash", "/init/create-bucket.sh"]
-    restart: on-failure:5
+    restart: "no"
     labels:
       - "com.microservices.service=minio-init"
       - "com.microservices.tier=data"

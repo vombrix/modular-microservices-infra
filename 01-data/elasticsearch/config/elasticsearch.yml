@@ -16,7 +16,7 @@ node.attr.rack: r1
 # NODE ROLES
 # ------------------------------------------------------------------------------
 # Configures this node to handle all roles for a single-node setup.
-node.roles: [master, data, ingest]
+node.roles: [master, data, ingest, transform, remote_cluster_client, ml]
 
 # ------------------------------------------------------------------------------
 # PATHS

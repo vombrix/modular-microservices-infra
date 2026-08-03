@@ -24,6 +24,10 @@ volumes:
   kibana_data:
   mimir_data:
   pyroscope_data:
+  kibana_token:
+    external: true
+    name: 01-data_kibana_token
+  
 
 # ------------------------------------------------------------------------------
 # SERVICES
@@ -44,7 +48,7 @@ services:
       - '-config.expand-env=true'
     environment:
       - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-minioadmin}
-      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-minioadmin}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
     volumes:
       - ./mimir/config/mimir-config.yml:/etc/mimir/mimir-config.yml:ro
       - ./mimir/alertmanager-fallback.yml:/etc/mimir/alertmanager-fallback.yml:ro
@@ -115,7 +119,7 @@ services:
     command: "-config.file=/etc/loki/loki-config.yml -config.expand-env=true"
     environment:
       - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
-      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
     volumes:
       - ./loki/config/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki_data:/loki
@@ -150,11 +154,11 @@ services:
       - tempo_data:/var/tempo
     environment:
       - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
-      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
     ports:
       - "${TEMPO_PORT:-3200}:3200"
-      - "${TEMPO_OTLP_GRPC_PORT:-4317}:4317"
-      - "${TEMPO_OTLP_HTTP_PORT:-4318}:4318"
+      - "${TEMPO_OTLP_GRPC_PORT:-4319}:4317"
+      - "${TEMPO_OTLP_HTTP_PORT:-4320}:4318"
       - "9411:9411"
     logging:
       driver: "json-file"
@@ -178,7 +182,7 @@ services:
       - '-config.expand-env=true'
     environment:
       - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
-      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:-change_me_observability}
+      - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
     volumes:
       - ./pyroscope/config/pyroscope-config.yml:/etc/pyroscope/pyroscope-config.yml:ro
       - pyroscope_data:/data
@@ -219,6 +223,8 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
       - ./cadvisor/machine-id:/etc/machine-id:ro
+      - ./cadvisor/machine-id:/rootfs/etc/machine-id:ro
+      - ./cadvisor/machine-id:/var/lib/dbus/machine-id:ro
     ports:
       - "${CADVISOR_PORT:-8081}:8080"
     healthcheck:
@@ -284,10 +290,10 @@ services:
     image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.91.0}
     container_name: otel-collector
     restart: unless-stopped
-    command: ["--config=/etc/otel-collector-config.yml", "--feature-gates=service.profilesSupport"]
+    command: ["--config=/etc/otel-collector-config.yml"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_admin_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:? Check .env file}
       POSTGRES_DB: ${POSTGRES_DB:-main_db}
     volumes:
       - ./otel-collector/config/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
@@ -345,8 +351,8 @@ services:
       - I18N_LOCALE=en
     volumes:
       - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
-      - ./kibana/kibana.token:/run/secrets/kibana.token:ro
       - kibana_data:/usr/share/kibana/data
+      - kibana_token:/run/secrets:ro
     ports:
       - "5601:5601"
     deploy:
@@ -380,12 +386,12 @@ services:
     user: root
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_secure_pass_123}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:? Check .env file}
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_SERVER_DOMAIN: localhost
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
-      GF_INSTALL_PLUGINS: ${GRAFANA_INSTALL_PLUGINS:-grafana-clock-panel,grafana-simple-json-datasource,grafana-pyroscope-datasource}
+      GF_INSTALL_PLUGINS: ${GRAFANA_INSTALL_PLUGINS:-grafana-clock-panel,grafana-simple-json-datasource}
       GF_FEATURE_TOGGLES_ENABLE: tempoSearch,tempoBackendSearch,traceToProfiles
       GF_UNIFIED_ALERTING_ENABLED: "true"
       GF_LOG_LEVEL: info
@@ -420,30 +426,66 @@ services:
   # ----------------------------------------------------------------------------
   # Grafana Agent
   # ----------------------------------------------------------------------------
-  grafana-agent:
-    image: grafana/agent:${GRAFANA_AGENT_VERSION:-latest}
-    container_name: grafana-agent
+  # grafana-agent:
+  #   image: grafana/agent:${GRAFANA_AGENT_VERSION:-latest}
+  #   container_name: grafana-agent
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./grafana-agent/config/agent.river:/etc/agent/agent.river:ro
+  #   environment:
+  #     - AGENT_MODE=flow
+  #   ports:
+  #     - "${GRAFANA_AGENT_PORT:-12345}:12345"
+  #   command:
+  #     - 'run'
+  #     - '/etc/agent/agent.river'
+  #     - '--server.http.listen-addr=0.0.0.0:12345'
+  #   healthcheck:
+  #     test: ["CMD", "pidof", "grafana-agent"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   labels:
+  #     - "com.microservices.service=grafana-agent"
+  #     - "com.microservices.tier=observability"
+
+  # ----------------------------------------------------------------------------
+  # Grafana Alloy
+  # ----------------------------------------------------------------------------
+
+  grafana-alloy:
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-latest}
+    container_name: alloy
     restart: unless-stopped
+
     volumes:
-      - ./grafana-agent/config/agent.river:/etc/agent/agent.river:ro
-    environment:
-      - AGENT_MODE=flow
+      - ./grafana-alloy/config/config.alloy:/etc/alloy/config.alloy:ro
+
     ports:
-      - "${GRAFANA_AGENT_PORT:-12345}:12345"
+      - "${ALLOY_PORT:-12345}:12345"
+
     command:
-      - 'run'
-      - '/etc/agent/agent.river'
-      - '--server.http.listen-addr=0.0.0.0:12345'
+      - "run"
+      - "/etc/alloy/config.alloy"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+
     healthcheck:
-      test: ["CMD", "pidof", "grafana-agent"]
+      test: ["CMD", "pidof", "alloy"]
       interval: 30s
       timeout: 10s
       retries: 3
+
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
     labels:
-      - "com.microservices.service=grafana-agent"
+      - "com.microservices.service=grafana-alloy"
       - "com.microservices.tier=observability"

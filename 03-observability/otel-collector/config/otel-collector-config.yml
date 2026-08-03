@@ -86,16 +86,9 @@ exporters:
     tls:
       insecure: true
 
-  # Profiles to Pyroscope
-  # Profiles to Pyroscope (via OTLP HTTP)
-  otlphttp/pyroscope:
-    endpoint: http://pyroscope:4040
-    tls:
-      insecure: true
-
-  # Logs to Grafana Agent
+  # Logs to Alloy
   otlp:
-    endpoint: grafana-agent:4317
+    endpoint: alloy:4317
     tls:
       insecure: true
 
@@ -123,7 +116,7 @@ service:
     # 1. Traces Pipeline
     traces:
       receivers: [otlp]
-      processors: [resource/keycloak, memory_limiter, batch]
+      processors: [memory_limiter, resource/keycloak, batch]
       exporters: [otlp/tempo]
 
     # 2. Metrics Pipeline
@@ -135,11 +128,5 @@ service:
     # 3. Logs Pipeline
     logs:
       receivers: [otlp, filelog]
-      processors: [resource/keycloak, memory_limiter, batch]
+      processors: [memory_limiter, resource/keycloak, batch]
       exporters: [otlp]
-
-    # 4. Profiles Pipeline
-    profiles:
-      receivers: [otlp]
-      processors: [resource/keycloak, memory_limiter]
-      exporters: [otlphttp/pyroscope]

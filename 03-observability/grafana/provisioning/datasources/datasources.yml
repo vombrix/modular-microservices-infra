@@ -104,7 +104,7 @@ datasources:
     version: 1
 
   - name: Pyroscope
-    type: grafana-pyroscope-datasource
+    type: pyroscope
     access: proxy
     url: http://pyroscope:4040
     uid: pyroscope

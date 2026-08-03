@@ -36,7 +36,7 @@ for arg in "$@"; do
 done
 
 # Build docker-compose command
-CMD="docker compose -p $LAST_FOLDER -f $DIR/docker-compose.yml down"
+CMD="docker compose -p $LAST_FOLDER --env-file .env -f $DIR/docker-compose.yml down"
 
 if [ -n "$SERVICE" ]; then
     CMD="$CMD $SERVICE"

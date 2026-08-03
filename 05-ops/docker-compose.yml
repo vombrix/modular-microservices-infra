@@ -44,21 +44,28 @@ services:
         -Dhudson.footerURL=http://jenkins:8080
       CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
       JENKINS_ADMIN_ID: ${JENKINS_ADMIN_USER:-admin}
-      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin_secure_pass_123}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:? Check .env file}
       DOCKER_HOST: unix:///var/run/docker.sock
       DOCKER_CERT_PATH: ""
       DOCKER_TLS_VERIFY: ""
       JENKINS_JAVA_OPTS: -Djenkins.model.JenkinsLocationConfiguration.url=http://jenkins:8080
-    command: >
-      bash -c "jenkins-plugin-cli -f /usr/share/jenkins/ref/plugins.txt && /usr/local/bin/jenkins.sh"
+    entrypoint: ["/usr/bin/tini", "--", "/bin/bash", "-c"]
+    command:
+      - |
+        if [ ! -f /var/jenkins_home/plugins_installed ]; then
+          echo "Installing Jenkins plugins..."
+          jenkins-plugin-cli --verbose -f /usr/share/jenkins/ref/plugins.txt
+          touch /var/jenkins_home/plugins_installed
+        fi
+        echo "Starting Jenkins..."
+        exec /usr/local/bin/jenkins.sh
     volumes:
       - jenkins_data:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/bin/docker:/usr/bin/docker:ro
-      - ./jenkins/jenkins-security.groovy:/usr/share/jenkins/ref/init.groovy.d/security.groovy
-      - ./jenkins/init_node.groovy:/usr/share/jenkins/ref/init.groovy.d/init_node.groovy
-      - ./jenkins/plugins.txt:/usr/share/jenkins/ref/plugins.txt
+      - ./jenkins/jenkins-security.groovy:/var/jenkins_home/init.groovy.d/security.groovy:ro
+      - ./jenkins/init_node.groovy:/var/jenkins_home/init.groovy.d/init_node.groovy:ro
+      - ./jenkins/plugins.txt:/usr/share/jenkins/ref/plugins.txt:ro
       - jenkins_agent_data:/var/jenkins_home/agent_share
     ports:
       - "${JENKINS_HTTP_PORT:-8082}:8080"
@@ -68,7 +75,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
+      start_period: 300s
     logging:
       driver: "json-file"
       options:
@@ -122,7 +129,7 @@ services:
       PORTAINER_HTTP_ENABLED: "true"
     volumes:
       - portainer_data:/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./portainer/portainer_passwd:/run/secrets/portainer_passwd:ro
     ports:
       - "${PORTAINER_HTTP_PORT:-9002}:9000"
@@ -263,13 +270,9 @@ services:
     image: axllent/mailpit:latest
     container_name: mailpit
     restart: unless-stopped
-    environment:
-      MP_UI_AUTH_FILE: /auth
     ports:
       - "${MAILHOG_SMTP_PORT:-1025}:1025"
       - "${MAILHOG_WEB_PORT:-8025}:8025"
-    volumes:
-      - ./mailpit/auth:/auth:ro
     logging:
       driver: "json-file"
       options:
