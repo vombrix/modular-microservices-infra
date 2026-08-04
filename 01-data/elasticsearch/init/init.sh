@@ -17,18 +17,17 @@ TOKEN_FILE="${TOKEN_DIR}/kibana.token"
 mkdir -p "${TOKEN_DIR}"
 chmod 755 "${TOKEN_DIR}"
 
-echo "Creating Kibana service account token..."
+# Check if token already exists and is not empty
+if [ -s "${TOKEN_FILE}" ]; then
+    echo "✓ Kibana service account token already exists at ${TOKEN_FILE}, skipping creation."
+    exit 0
+fi
 
-# Delete existing token if any to avoid duplicate name conflict
-curl -s -u "elastic:${ELASTIC_PASSWORD}" \
-  -X DELETE "http://elasticsearch:9200/_security/service/elastic/kibana/credential/token/kibana" \
-  > /dev/null 2>&1 || true
+echo "Creating Kibana service account token..."
 
 # Create a new service account token
 RESPONSE=$(curl -s -u "elastic:${ELASTIC_PASSWORD}" \
   -X POST "http://elasticsearch:9200/_security/service/elastic/kibana/credential/token/kibana")
-
-echo "${RESPONSE}"
 
 # Extract the token value from the JSON response
 TOKEN=$(echo "${RESPONSE}" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')

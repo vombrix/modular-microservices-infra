@@ -50,7 +50,7 @@ cp .env.example .env
 # - MONGO_INITDB_ROOT_PASSWORD
 # - REDIS_PASSWORD
 # - ELASTIC_PASSWORD
-# - KEYCLOAK_ADMIN_PASSWORD
+# - KC_BOOTSTRAP_ADMIN_PASSWORD
 # - GRAFANA_ADMIN_PASSWORD
 
 nano .env  # or use your preferred editor

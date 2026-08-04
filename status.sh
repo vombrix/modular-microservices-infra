@@ -21,9 +21,12 @@ check_service() {
         local status=$(docker inspect --format='{{.State.Status}}' $service 2>/dev/null)
         local health=$(docker inspect --format='{{.State.Health.Status}}' $service 2>/dev/null)
         
-        if [ "$status" == "running" ]; then
-            if [ "$health" == "healthy" ] || [ "$health" == "<no value>" ]; then
+        if [ "$status" = "running" ]; then
+            if [ "$health" = "healthy" ] || [ "$health" = "<no value>" ] || [ -z "$health" ]; then
                 echo -e "${GREEN}✓${NC} $service - Running"
+                return 0
+            elif [ "$health" = "starting" ]; then
+                echo -e "${YELLOW}⟳${NC} $service - Starting (Health: starting)"
                 return 0
             else
                 echo -e "${YELLOW}⚠${NC} $service - Running (Health: $health)"

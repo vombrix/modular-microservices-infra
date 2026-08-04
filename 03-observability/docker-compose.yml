@@ -57,7 +57,7 @@ services:
       - "${MIMIR_PORT:-9009}:9009"
       - "${MIMIR_GRPC_PORT:-9095}:9095"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9009/ready"]
+      test: ["CMD", "/bin/mimir", "-version"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -126,7 +126,7 @@ services:
     ports:
       - "${LOKI_PORT:-3100}:3100"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      test: ["CMD", "/usr/bin/loki", "-verify-config", "-config.file=/etc/loki/loki-config.yml", "-config.expand-env=true"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -144,7 +144,7 @@ services:
   # Tempo (Distributed Tracing)
   # ----------------------------------------------------------------------------
   tempo:
-    image: grafana/tempo:${TEMPO_VERSION:-3.0.2}
+    image: grafana/tempo:${TEMPO_VERSION:-2.7.2}
     container_name: tempo
     restart: unless-stopped
     user: root
@@ -189,7 +189,7 @@ services:
     ports:
       - "${PYROSCOPE_PORT:-4040}:4040"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4040/ready"]
+      test: ["CMD", "/usr/bin/pyroscope", "--version"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -352,7 +352,9 @@ services:
     volumes:
       - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - kibana_data:/usr/share/kibana/data
+      - ./kibana/init/init.sh:/usr/local/bin/init.sh:ro
       - kibana_token:/run/secrets:ro
+    entrypoint: ["/usr/local/bin/init.sh"]
     ports:
       - "${KIBANA_PORT:-5601}:5601"
     deploy:

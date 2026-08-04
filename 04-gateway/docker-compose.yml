@@ -28,7 +28,7 @@ services:
   # Kong Database Migrations
   # ----------------------------------------------------------------------------
   kong-migrations:
-    image: kong/kong-gateway:${KONG_VERSION:-3.4.2}
+    image: kong/kong-gateway:${KONG_VERSION:-3.4.2.0}
     container_name: kong-migrations
     restart: "no"
     command: kong migrations bootstrap
@@ -57,7 +57,7 @@ services:
   # Kong Gateway
   # ----------------------------------------------------------------------------
   kong:
-    image: kong/kong-gateway:${KONG_VERSION:-3.4.2}
+    image: kong/kong-gateway:${KONG_VERSION:-3.4.2.0}
     container_name: kong
     restart: unless-stopped
     depends_on:
@@ -129,9 +129,10 @@ services:
     depends_on:
       - postgres-wait
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:? Check .env file}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:? Check .env file}
       KC_HOSTNAME: keycloak.${DOMAIN_NAME:-darkstar.local}
+      KC_PROXY_HEADERS: xforwarded
       KC_DB: postgres
       KC_DB_URL_HOST: ${KEYCLOAK_DB_HOST:-postgres}
       KC_DB_URL_PORT: ${KEYCLOAK_DB_PORT:-5432}
@@ -140,10 +141,8 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Check .env file}
       KC_DB_SCHEMA: public
       KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
-      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
       KC_HTTP_ENABLED: "true"
-      KC_PROXY: edge
       KC_PROXY_ADDRESS_FORWARDING: "true"
       KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:-true}
       KC_METRICS_ENABLED: ${KC_METRICS_ENABLED:-true}
