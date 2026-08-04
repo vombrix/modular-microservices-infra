@@ -347,8 +347,8 @@ services:
       - ELASTICSEARCH_REQUESTTIMEOUT=30000
       - ELASTICSEARCH_SHARDTIMEOUT=30000
       - KIBANA_DEFAULTAPPID=home
-      - ELASTICSEARCH_SERVICE_TOKEN_FILE=/run/secrets/kibana.token
       - I18N_LOCALE=en
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN_FILE=/run/secrets/kibana.token
     volumes:
       - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - kibana_data:/usr/share/kibana/data

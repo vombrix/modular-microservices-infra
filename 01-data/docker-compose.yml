@@ -34,7 +34,7 @@ services:
   # PostgreSQL
   # ----------------------------------------------------------------------------
   postgres:
-    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    image: postgres:${POSTGRES_VERSION:-18.4}
     container_name: postgres
     restart: unless-stopped
     environment:
@@ -72,7 +72,7 @@ services:
   # MongoDB
   # ----------------------------------------------------------------------------
   mongo:
-    image: mongo:${MONGO_VERSION:-6.0}
+    image: mongo:${MONGO_VERSION:-9.0}
     container_name: mongo
     restart: unless-stopped
     environment:
@@ -105,7 +105,7 @@ services:
   # Redis
   # ----------------------------------------------------------------------------
   redis:
-    image: redis:${REDIS_VERSION:-7.2-alpine}
+    image: redis:${REDIS_VERSION:-8.2.8}
     container_name: redis
     restart: unless-stopped
     environment:
@@ -140,7 +140,7 @@ services:
   # Elasticsearch
   # ----------------------------------------------------------------------------
   elasticsearch:
-    image: elasticsearch:${ELASTICSEARCH_VERSION:-8.11.1}
+    image: elasticsearch:${ELASTICSEARCH_VERSION:-9.4.4}
     container_name: elasticsearch
     restart: unless-stopped
     deploy:

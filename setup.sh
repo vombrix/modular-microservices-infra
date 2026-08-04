@@ -306,7 +306,7 @@ NETWORK_NAME=global-infra
 COMPOSE_PROJECT_NAME=microservices-infra
 
 # PostgreSQL (Centralized)
-POSTGRES_VERSION=15-alpine
+POSTGRES_VERSION=18.4
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 POSTGRES_USER=admin
@@ -330,12 +330,12 @@ APP_DB_USER=app_user
 APP_DB_PASSWORD=change_me_app_db_password
 
 # MongoDB
-MONGO_VERSION=6.0
+MONGO_VERSION=9.0
 MONGO_INITDB_ROOT_USERNAME=mongoadmin
 MONGO_INITDB_ROOT_PASSWORD=change_me_mongo_password
 
 # Redis
-REDIS_VERSION=7.2-alpine
+REDIS_VERSION=8.2.8
 REDIS_PASSWORD=change_me_redis_password
 REDIS_MAX_MEMORY=256mb
 REDIS_MAX_MEMORY_POLICY=allkeys-lru

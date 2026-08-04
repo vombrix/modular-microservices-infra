@@ -19,9 +19,9 @@ stop_stack() {
     echo -e "${YELLOW}Stopping $name...${NC}"
     cd "$dir"
     if [ "$action" == "down" ]; then
-        docker compose down
+        docker compose --env-file ../.env down 
     else
-        docker compose stop
+        docker compose --env-file ../.env stop 
     fi
     cd - > /dev/null
     echo -e "${GREEN}✓ $name stopped${NC}"

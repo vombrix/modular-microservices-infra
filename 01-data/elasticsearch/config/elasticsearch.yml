@@ -53,7 +53,7 @@ action.destructive_requires_name: false
 # SECURITY (X-PACK)
 # ------------------------------------------------------------------------------
 xpack.security.enabled: ${ELASTIC_XPACK_SECURITY}
-xpack.security.enrollment.enabled: false
+xpack.security.enrollment.enabled: true
 
 # SSL/TLS disabled for internal non-prod usage
 xpack.security.http.ssl.enabled: false
