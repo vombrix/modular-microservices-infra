@@ -287,7 +287,7 @@ services:
   # OpenTelemetry Collector
   # ----------------------------------------------------------------------------
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-1.63.0}
+    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.157.0}
     container_name: otel-collector
     restart: unless-stopped
     command: ["--config=/etc/otel-collector-config.yml"]
@@ -429,7 +429,7 @@ services:
   # Grafana Alloy (Telemetry Collector)
   # ----------------------------------------------------------------------------
   grafana-alloy:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.18.0}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.18.0}
     container_name: alloy
     restart: unless-stopped
     command:
