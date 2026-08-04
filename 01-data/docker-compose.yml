@@ -254,6 +254,7 @@ services:
       BACKUP_SERVICE_USER: ${BACKUP_SERVICE_USER:-backup-service}
       BACKUP_SERVICE_PASSWORD: ${BACKUP_SERVICE_PASSWORD:? Check .env file}
     volumes:
+      - seaweedfs_data:/data:ro
       - ./seaweedfs/init/init.sh:/init/init.sh:ro
       - ./seaweedfs/config:/etc/seaweedfs
     entrypoint: ["/bin/sh", "/init/init.sh"]

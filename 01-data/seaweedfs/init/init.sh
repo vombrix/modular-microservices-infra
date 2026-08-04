@@ -1,9 +1,12 @@
 #!/bin/sh
-
+# ==============================================================================
 # SeaweedFS Initialization Script
+# ==============================================================================
 # Path: 01-data/seaweedfs/init/init.sh
 #
-# This script initializes SeaweedFS S3 buckets, IAM service accounts, and bucket policies on startup.
+# This script initializes SeaweedFS S3 buckets, IAM service accounts, and bucket
+# policies on startup.
+# ==============================================================================
 
 set -e
 
@@ -23,7 +26,7 @@ MASTER_URL="http://seaweedfs:9333"
 
 # Wait for SeaweedFS Master and Filer to be ready
 echo -e "${YELLOW}Waiting for SeaweedFS to be ready...${NC}"
-until wget -q -O - "${MASTER_URL}/cluster/status" > /dev/null 2>&1 && wget -q -O - "${FILER_URL}/" > /dev/null 2>&1; do
+until curl -s -f "${MASTER_URL}/cluster/status" > /dev/null 2>&1 && curl -s -f "${FILER_URL}/" > /dev/null 2>&1; do
     echo -e "${YELLOW}SeaweedFS is unavailable - sleeping 2s${NC}"
     sleep 2
 done
@@ -111,9 +114,9 @@ cat << EOF > /etc/seaweedfs/s3.json
 }
 EOF
 
-# Upload s3.json directly to SeaweedFS Filer config store
-wget -q -O - --post-file=/etc/seaweedfs/s3.json "${FILER_URL}/etc/seaweedfs/s3.json" > /dev/null 2>&1 || true
-wget -q -O - --post-file=/etc/seaweedfs/s3.json "${FILER_URL}/etc/s3.json" > /dev/null 2>&1 || true
+# Upload s3.json directly to SeaweedFS Filer config store using PUT
+curl -s -f -X PUT --data-binary "@/etc/seaweedfs/s3.json" "${FILER_URL}/etc/seaweedfs/s3.json" > /dev/null 2>&1 || true
+curl -s -f -X PUT --data-binary "@/etc/seaweedfs/s3.json" "${FILER_URL}/etc/s3.json" > /dev/null 2>&1 || true
 
 echo -e "${GREEN}✓ S3 IAM accounts and credentials configured${NC}"
 echo ""
@@ -146,7 +149,7 @@ EOF
 create_bucket_dir() {
     NAME="$1"
     DESC="$2"
-    wget -q -O - --post-data="" "${FILER_URL}/buckets/${NAME}/.keep" > /dev/null 2>&1 || true
+    curl -s -f -X PUT -d "" "${FILER_URL}/buckets/${NAME}/.keep" > /dev/null 2>&1 || true
     echo -e "${GREEN}✓ Created bucket: ${NAME} - ${DESC}${NC}"
 }
 
