@@ -100,7 +100,7 @@ services:
       - "${KONG_PROXY_SSL_PORT:-8445}:8443"
       - "${KONG_ADMIN_PORT:-8001}:8001"
       - "${KONG_ADMIN_SSL_PORT:-8444}:8444"
-      - "8002:8002"
+      - "${KONG_ADMIN_GUI_PORT:-8002}:8002"
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 10s
@@ -188,7 +188,7 @@ services:
   # Helper: Wait for Postgres & Init DBs
   # ----------------------------------------------------------------------------
   postgres-wait:
-    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    image: postgres:${POSTGRES_VERSION:-18.4}
     container_name: postgres-wait
     restart: "no"
     volumes:

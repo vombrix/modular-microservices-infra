@@ -5,7 +5,7 @@
       "credentials": [
         {
           "accessKey": "admin",
-          "secretKey": "hwzTnwDQHd9xl1gnyYog"
+          "secretKey": "CHANGE_ME_seaweedfs_admin_password"
         }
       ],
       "actions": [
@@ -21,7 +21,7 @@
       "credentials": [
         {
           "accessKey": "observability-service",
-          "secretKey": "CenlhwZLLdCzTYnh1jB8xV2Q"
+          "secretKey": "CHANGE_ME_observability_password"
         }
       ],
       "actions": [
@@ -38,7 +38,7 @@
       "credentials": [
         {
           "accessKey": "app-service",
-          "secretKey": "4xSRStUrJuTPmZLYlJpUs9p0"
+          "secretKey": "CHANGE_ME_app_service_password"
         }
       ],
       "actions": [
@@ -52,7 +52,7 @@
       "credentials": [
         {
           "accessKey": "backup-service",
-          "secretKey": "DUp6Huk7XNCNImLnGCoqey1O"
+          "secretKey": "CHANGE_ME_backup_service_password"
         }
       ],
       "actions": [

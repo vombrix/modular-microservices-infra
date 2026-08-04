@@ -90,7 +90,7 @@ check_port 9092 "Kafka Broker"
 check_port 29092 "Kafka External"
 check_port 9093 "Kafka Controller"
 check_service "kafka-ui" 8080
-check_port 8080 "Kafka UI"
+check_port 8081 "Kafka UI"
 echo ""
 
 # Observability Layer
@@ -129,11 +129,11 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}05 - Operations Layer${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 check_service "jenkins" 8080
-check_port 8080 "Jenkins"
+check_port 8082 "Jenkins"
 check_service "portainer" 9000
-check_port 9000 "Portainer"
-check_service "trivy" 8082
-check_port 8082 "Trivy"
+check_port 9002 "Portainer"
+check_service "trivy" 8080
+check_port 8083 "Trivy"
 echo ""
 
 # Resource Usage

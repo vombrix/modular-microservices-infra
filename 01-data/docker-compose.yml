@@ -1,7 +1,7 @@
 # ==============================================================================
 # 01-DATA STACK
 # ==============================================================================
-# Core data services: Postgres, MongoDB, Redis, Elasticsearch, MinIO.
+# Core data services: Postgres, MongoDB, Redis, Elasticsearch, SeaweedFS.
 # ==============================================================================
 name: 01-data
 
@@ -81,7 +81,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-mongoadmin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:? Check .env file}
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
       - mongo_config:/data/configdb
@@ -118,7 +118,7 @@ services:
       redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
       "
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
       - ./redis/config/redis.conf:/usr/local/etc/redis/redis.conf
@@ -156,14 +156,13 @@ services:
       - ELASTIC_DISCOVERY_TYPE=${ELASTIC_DISCOVERY_TYPE:-single-node}
       - ELASTIC_XPACK_SECURITY=${ELASTIC_XPACK_SECURITY:-true}
       - "ES_JAVA_OPTS=${ELASTIC_JAVA_OPTS:- -Xms512m -Xmx512m}"
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?Check .env file}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:? Check .env file}
     ports:
-      - "9200:9200"
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
       - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
       - ./elasticsearch/init/init.sh:/usr/share/elasticsearch/init/init.sh
-
     healthcheck:
       test: ["CMD-SHELL", "curl -u elastic:${ELASTIC_PASSWORD} -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
@@ -179,23 +178,32 @@ services:
       - "com.microservices.tier=data"
 
   # ----------------------------------------------------------------------------
-  # Elasticsearch Init
+  # Elasticsearch Init (Kibana Service Token)
   # ----------------------------------------------------------------------------
   elasticsearch-init:
     image: elasticsearch:${ELASTICSEARCH_VERSION:-9.4.4}
     container_name: elasticsearch-init
+    restart: "no"
     user: root
-    environment:
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?Check .env file}
     depends_on:
       elasticsearch:
         condition: service_healthy
-
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:? Check .env file}
     volumes:
-      - ./elasticsearch/init/init.sh:/init.sh
+      - ./elasticsearch/init/init.sh:/init.sh:ro
       - kibana_token:/token
-
     command: ["/bin/bash", "/init.sh"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.microservices.service=elasticsearch-init"
+      - "com.microservices.tier=data"
+      - "com.microservices.type=init"
+
   # ----------------------------------------------------------------------------
   # SeaweedFS (Distributed S3 & Object Storage)
   # ----------------------------------------------------------------------------
@@ -208,7 +216,7 @@ services:
       - "${SEAWEEDFS_S3_PORT:-8333}:8333"
       - "${SEAWEEDFS_FILER_PORT:-8888}:8888"
       - "${SEAWEEDFS_MASTER_PORT:-9333}:9333"
-      - "${SEAWEEDFS_VOLUME_PORT:-8080}:8080"
+      - "${SEAWEEDFS_VOLUME_PORT:-8084}:8080"
     volumes:
       - seaweedfs_data:/data
       - ./seaweedfs/config/s3.json:/etc/seaweedfs/s3.json:ro

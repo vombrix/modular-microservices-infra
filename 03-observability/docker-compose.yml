@@ -27,7 +27,7 @@ volumes:
   kibana_token:
     external: true
     name: 01-data_kibana_token
-  
+
 
 # ------------------------------------------------------------------------------
 # SERVICES
@@ -159,7 +159,7 @@ services:
       - "${TEMPO_PORT:-3200}:3200"
       - "${TEMPO_OTLP_GRPC_PORT:-4319}:4317"
       - "${TEMPO_OTLP_HTTP_PORT:-4320}:4318"
-      - "9411:9411"
+      - "${TEMPO_ZIPKIN_PORT:-9411}:9411"
     logging:
       driver: "json-file"
       options:
@@ -226,7 +226,7 @@ services:
       - ./cadvisor/machine-id:/rootfs/etc/machine-id:ro
       - ./cadvisor/machine-id:/var/lib/dbus/machine-id:ro
     ports:
-      - "${CADVISOR_PORT:-8081}:8080"
+      - "${CADVISOR_PORT:-8088}:8080"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
@@ -303,10 +303,10 @@ services:
     ports:
       - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
       - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
-      - "${OTEL_COLLECTOR_METRICS_PORT:-8888}:8888"
-      - "8889:8889"
+      - "${OTEL_COLLECTOR_METRICS_PORT:-8887}:8888"
+      - "${OTEL_COLLECTOR_PROMETHEUS_PORT:-8889}:8889"
       - "${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133"
-      - "55679:55679"
+      - "${OTEL_COLLECTOR_ZPAGES_PORT:-55679}:55679"
     user: "0"
     depends_on:
       prometheus:
@@ -354,7 +354,7 @@ services:
       - kibana_data:/usr/share/kibana/data
       - kibana_token:/run/secrets:ro
     ports:
-      - "5601:5601"
+      - "${KIBANA_PORT:-5601}:5601"
     deploy:
       resources:
         limits:
@@ -423,69 +423,33 @@ services:
         max-file: "3"
     labels:
       - "com.microservices.service=grafana"
-  # ----------------------------------------------------------------------------
-  # Grafana Agent
-  # ----------------------------------------------------------------------------
-  # grafana-agent:
-  #   image: grafana/agent:${GRAFANA_AGENT_VERSION:-latest}
-  #   container_name: grafana-agent
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./grafana-agent/config/agent.river:/etc/agent/agent.river:ro
-  #   environment:
-  #     - AGENT_MODE=flow
-  #   ports:
-  #     - "${GRAFANA_AGENT_PORT:-12345}:12345"
-  #   command:
-  #     - 'run'
-  #     - '/etc/agent/agent.river'
-  #     - '--server.http.listen-addr=0.0.0.0:12345'
-  #   healthcheck:
-  #     test: ["CMD", "pidof", "grafana-agent"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-  #   labels:
-  #     - "com.microservices.service=grafana-agent"
-  #     - "com.microservices.tier=observability"
+      - "com.microservices.tier=observability"
 
   # ----------------------------------------------------------------------------
-  # Grafana Alloy
+  # Grafana Alloy (Telemetry Collector)
   # ----------------------------------------------------------------------------
-
   grafana-alloy:
     image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.18.0}
     container_name: alloy
     restart: unless-stopped
-
-    volumes:
-      - ./grafana-alloy/config/config.alloy:/etc/alloy/config.alloy:ro
-
-    ports:
-      - "${ALLOY_PORT:-12345}:12345"
-
     command:
       - "run"
       - "/etc/alloy/config.alloy"
       - "--server.http.listen-addr=0.0.0.0:12345"
-
+    volumes:
+      - ./grafana-alloy/config/config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "${ALLOY_PORT:-12345}:12345"
     healthcheck:
       test: ["CMD", "pidof", "alloy"]
       interval: 30s
       timeout: 10s
       retries: 3
-
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-
     labels:
       - "com.microservices.service=grafana-alloy"
       - "com.microservices.tier=observability"
