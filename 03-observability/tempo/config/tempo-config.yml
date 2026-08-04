@@ -61,7 +61,7 @@ storage:
   trace:
     backend: s3
     s3:
-      endpoint: minio:9000
+      endpoint: seaweedfs:8333
       bucket: tempo
       access_key: ${MINIO_ACCESS_KEY}
       secret_key: ${MINIO_SECRET_KEY}

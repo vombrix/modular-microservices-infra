@@ -27,10 +27,10 @@ server:
 storage:
   backend: s3
   s3:
-    endpoint: minio:9000
+    endpoint: seaweedfs:8333
     bucket_name: pyroscope
-    access_key_id: ${MINIO_ACCESS_KEY:-minio}
-    secret_access_key: ${MINIO_SECRET_KEY:-minio123}
+    access_key_id: ${MINIO_ACCESS_KEY:-observability-service}
+    secret_access_key: ${MINIO_SECRET_KEY:-observability-service}
     insecure: true
 
 # ------------------------------------------------------------------------------

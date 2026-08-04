@@ -91,11 +91,11 @@ echo -e "${GREEN}All Services Stopped Successfully!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
-REMAINING=$(docker ps -a --format "{{.Names}}" | grep -E "postgres|mongo|redis|elastic|minio|kafka|prometheus|loki|tempo|grafana|otel|kong|keycloak|nginx|jenkins|portainer|trivy" | wc -l)
+REMAINING=$(docker ps -a --format "{{.Names}}" | grep -E "postgres|mongo|redis|elastic|minio|seaweedfs|kafka|prometheus|loki|tempo|grafana|otel|kong|keycloak|nginx|jenkins|portainer|trivy" | wc -l)
 
 if [ "$REMAINING" -gt 0 ]; then
     echo -e "${YELLOW}Remaining containers:${NC}"
-    docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -E "postgres|mongo|redis|elastic|minio|kafka|prometheus|loki|tempo|grafana|otel|kong|keycloak|nginx|jenkins|portainer|trivy"
+    docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -E "postgres|mongo|redis|elastic|minio|seaweedfs|kafka|prometheus|loki|tempo|grafana|otel|kong|keycloak|nginx|jenkins|portainer|trivy"
 else
     echo -e "${GREEN}No infrastructure containers remaining.${NC}"
 fi

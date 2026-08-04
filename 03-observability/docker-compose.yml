@@ -38,7 +38,7 @@ services:
   # Mimir (Metrics Storage)
   # ----------------------------------------------------------------------------
   mimir:
-    image: grafana/mimir:${MIMIR_VERSION:-2.11.0}
+    image: grafana/mimir:${MIMIR_VERSION:-3.1.0}
     container_name: mimir
     restart: unless-stopped
     user: root
@@ -47,7 +47,7 @@ services:
       - '-config.file=/etc/mimir/mimir-config.yml'
       - '-config.expand-env=true'
     environment:
-      - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-minioadmin}
+      - MINIO_ACCESS_KEY=${OBSERVABILITY_USER:-observability-service}
       - MINIO_SECRET_KEY=${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
     volumes:
       - ./mimir/config/mimir-config.yml:/etc/mimir/mimir-config.yml:ro
@@ -75,7 +75,7 @@ services:
   # Prometheus (Metrics Collection)
   # ----------------------------------------------------------------------------
   prometheus:
-    image: prom/prometheus:${PROMETHEUS_VERSION:-v2.48.0}
+    image: prom/prometheus:${PROMETHEUS_VERSION:-v3.13.2}
     container_name: prometheus
     restart: unless-stopped
     user: root
@@ -112,7 +112,7 @@ services:
   # Loki (Log Aggregation)
   # ----------------------------------------------------------------------------
   loki:
-    image: grafana/loki:${LOKI_VERSION:-2.9.0}
+    image: grafana/loki:${LOKI_VERSION:-3.7.4}
     container_name: loki
     restart: unless-stopped
     user: root
@@ -144,7 +144,7 @@ services:
   # Tempo (Distributed Tracing)
   # ----------------------------------------------------------------------------
   tempo:
-    image: grafana/tempo:${TEMPO_VERSION:-2.3.0}
+    image: grafana/tempo:${TEMPO_VERSION:-3.0.2}
     container_name: tempo
     restart: unless-stopped
     user: root
@@ -173,7 +173,7 @@ services:
   # Pyroscope (Continuous Profiling)
   # ----------------------------------------------------------------------------
   pyroscope:
-    image: grafana/pyroscope:${PYROSCOPE_VERSION:-1.4.0}
+    image: grafana/pyroscope:${PYROSCOPE_VERSION:-2.2.0}
     container_name: pyroscope
     restart: unless-stopped
     user: root
@@ -207,7 +207,7 @@ services:
   # cAdvisor (Container Metrics)
   # ----------------------------------------------------------------------------
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:${CADVISOR_VERSION:-v0.47.2}
+    image: gcr.io/cadvisor/cadvisor:${CADVISOR_VERSION:-v0.55.1}
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
@@ -246,7 +246,7 @@ services:
   # Node Exporter (Host Metrics)
   # ----------------------------------------------------------------------------
   node-exporter:
-    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-v1.7.0}
+    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-v1.12.1}
     container_name: node-exporter
     restart: unless-stopped
     command:
@@ -287,7 +287,7 @@ services:
   # OpenTelemetry Collector
   # ----------------------------------------------------------------------------
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.91.0}
+    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-1.63.0}
     container_name: otel-collector
     restart: unless-stopped
     command: ["--config=/etc/otel-collector-config.yml"]
@@ -328,7 +328,7 @@ services:
   # Kibana (Elasticsearch Dashboard)
   # ----------------------------------------------------------------------------
   kibana:
-    image: docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-8.11.0}
+    image: docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-8.19.19}
     container_name: kibana
     restart: unless-stopped
     environment:
@@ -380,7 +380,7 @@ services:
   # Grafana (Metrics Dashboard)
   # ----------------------------------------------------------------------------
   grafana:
-    image: grafana/grafana:${GRAFANA_VERSION:-10.2.0}
+    image: grafana/grafana:${GRAFANA_VERSION:-13.1.1}
     container_name: grafana
     restart: unless-stopped
     user: root
@@ -459,7 +459,7 @@ services:
   # ----------------------------------------------------------------------------
 
   grafana-alloy:
-    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-latest}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-1.18.0}
     container_name: alloy
     restart: unless-stopped
 

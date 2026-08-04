@@ -103,17 +103,18 @@ URL: http://localhost:8080
 - Monitor consumer groups
 - Inspect messages
 
-### 4. Access MinIO Console
+### 4. Access SeaweedFS Filer / S3
 ```
-URL: http://localhost:9001
-Username: minioadmin
-Password: minioadmin (change in .env)
+Filer UI: http://localhost:8888
+Master UI: http://localhost:9333
+S3 Gateway: http://localhost:8333
+Admin User: admin (pass configured in .env)
 ```
 
 **What to do:**
-- Verify buckets created (uploads, backups, assets)
-- Upload test files
-- Configure bucket policies
+- Browse buckets and directories in Filer UI
+- Monitor volume layout in Master UI
+- Upload/download objects via AWS S3 CLI or SDK
 
 ### 5. Test Kong Gateway
 ```bash
@@ -329,7 +330,8 @@ docker exec grafana ping -c 2 prometheus
 | Kong Admin | http://localhost:8001 | - |
 | Keycloak | http://localhost:8080/auth | admin/admin |
 | Portainer | http://localhost:9000 | Set on first login |
-| MinIO Console | http://localhost:9001 | minioadmin/minioadmin |
+| SeaweedFS Filer | http://localhost:8888 | - |
+| SeaweedFS S3 | http://localhost:8333 | admin (see .env) |
 | Jenkins | http://localhost:8080 | admin/admin |
 
 ## 💡 Pro Tips

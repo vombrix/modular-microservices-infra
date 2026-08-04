@@ -1,41 +1,25 @@
 #!/bin/bash
 set -e
 
-TOKEN_DIR=/usr/share/elasticsearch/kibana-token
-TOKEN_FILE="$TOKEN_DIR/kibana.token"
+mkdir -p /token
+chmod 777 /token
 
-# Ensure token directory exists
-mkdir -p "$TOKEN_DIR"
+echo "Creating Kibana service account token..."
 
-# Function to check if token is valid
-check_token() {
-  local token=$1
-  # Test the token against Elasticsearch
-  # Replace <ELASTICSEARCH_URL> with your ES endpoint, e.g., http://localhost:9200
-  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $token" http://localhost:9200)
-  if [ "$HTTP_STATUS" = "200" ]; then
-    return 0   # valid
-  else
-    return 1   # invalid
-  fi
-}
+# Delete existing token if any to avoid duplicate name conflict
+curl -s -u elastic:${ELASTIC_PASSWORD} -X DELETE http://elasticsearch:9200/_security/service/elastic/kibana/credential/token/kibana > /dev/null 2>&1 || true
 
-if [ -f "$TOKEN_FILE" ]; then
-  EXISTING_TOKEN=$(cat "$TOKEN_FILE")
-  if check_token "$EXISTING_TOKEN"; then
-    echo "Token already exists and is valid."
-    exit 0
-  else
-    echo "Existing token is invalid, generating a new one..."
-  fi
-else
-  echo "No token found, generating a new one..."
+RESPONSE=$(curl -s -u elastic:${ELASTIC_PASSWORD} -X POST http://elasticsearch:9200/_security/service/elastic/kibana/credential/token/kibana)
+
+echo "$RESPONSE"
+
+TOKEN=$(echo "$RESPONSE" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')
+
+if [ -z "$TOKEN" ]; then
+    echo "Failed to create token"
+    exit 1
 fi
 
-# Generate new Kibana service token
-SERVICE_TOKEN=$(elasticsearch-service-tokens create elastic/kibana kibana)
-TOKEN_ONLY=$(echo "$SERVICE_TOKEN" | awk -F'= ' '{print $2}')
-
-# Save token
-echo "$TOKEN_ONLY" > "$TOKEN_FILE"
-echo "Token saved to $TOKEN_FILE"
+echo "$TOKEN" > /token/kibana.token
+chmod 644 /token/kibana.token
+echo "Done"

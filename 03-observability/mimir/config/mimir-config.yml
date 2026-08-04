@@ -23,19 +23,19 @@ limits:
 blocks_storage:
   backend: s3
   s3:
-    endpoint: minio:9000
+    endpoint: seaweedfs:8333
     bucket_name: mimir
-    access_key_id: ${MINIO_ACCESS_KEY:-minioadmin}
-    secret_access_key: ${MINIO_SECRET_KEY:-minioadmin}
+    access_key_id: ${MINIO_ACCESS_KEY:-observability-service}
+    secret_access_key: ${MINIO_SECRET_KEY:-observability-service}
     insecure: true
 
 ruler_storage:
   backend: s3
   s3:
-    endpoint: minio:9000
+    endpoint: seaweedfs:8333
     bucket_name: mimir-ruler
-    access_key_id: ${MINIO_ACCESS_KEY:-minioadmin}
-    secret_access_key: ${MINIO_SECRET_KEY:-minioadmin}
+    access_key_id: ${MINIO_ACCESS_KEY:-observability-service}
+    secret_access_key: ${MINIO_SECRET_KEY:-observability-service}
     insecure: true
 
 # ------------------------------------------------------------------------------
@@ -91,10 +91,10 @@ alertmanager:
 alertmanager_storage:
   backend: s3
   s3:
-    endpoint: minio:9000
+    endpoint: seaweedfs:8333
     bucket_name: mimir-alertmanager
-    access_key_id: ${MINIO_ACCESS_KEY:-minioadmin}
-    secret_access_key: ${MINIO_SECRET_KEY:-minioadmin}
+    access_key_id: ${MINIO_ACCESS_KEY:-observability-service}
+    secret_access_key: ${MINIO_SECRET_KEY:-observability-service}
     insecure: true
 
 # ------------------------------------------------------------------------------

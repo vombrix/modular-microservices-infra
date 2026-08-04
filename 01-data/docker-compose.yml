@@ -22,7 +22,7 @@ volumes:
   mongo_config:
   redis_data:
   elasticsearch_data:
-  minio_data:
+  seaweedfs_data:
   kibana_token:
 
 # ------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./postgres/init:/docker-entrypoint-initdb.d
       - ./postgres/config/postgresql.conf:/etc/postgresql/postgresql.conf
     healthcheck:
@@ -72,7 +72,7 @@ services:
   # MongoDB
   # ----------------------------------------------------------------------------
   mongo:
-    image: mongo:${MONGO_VERSION:-9.0}
+    image: mongo:${MONGO_VERSION:-8.3}
     container_name: mongo
     restart: unless-stopped
     environment:
@@ -154,25 +154,18 @@ services:
     environment:
       - ELASTIC_CLUSTER_NAME=${ELASTIC_CLUSTER_NAME:-docker-cluster}
       - ELASTIC_DISCOVERY_TYPE=${ELASTIC_DISCOVERY_TYPE:-single-node}
-      - ELASTIC_XPACK_SECURITY=${ELASTIC_XPACK_SECURITY:-false}
+      - ELASTIC_XPACK_SECURITY=${ELASTIC_XPACK_SECURITY:-true}
       - "ES_JAVA_OPTS=${ELASTIC_JAVA_OPTS:- -Xms512m -Xmx512m}"
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?Check .env file}
     ports:
       - "9200:9200"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
       - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
       - ./elasticsearch/init/init.sh:/usr/share/elasticsearch/init/init.sh
-      - kibana_token:/usr/share/elasticsearch/kibana-token
 
-    command: >
-      /bin/bash -c "
-      if [ -f /usr/share/elasticsearch/init/init.sh ]; then
-        /usr/share/elasticsearch/init/init.sh;
-      fi;
-      /usr/local/bin/docker-entrypoint.sh elasticsearch
-      "
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -u elastic:${ELASTIC_PASSWORD} -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -186,56 +179,77 @@ services:
       - "com.microservices.tier=data"
 
   # ----------------------------------------------------------------------------
-  # MinIO (S3 Compatible Storage)
+  # Elasticsearch Init
   # ----------------------------------------------------------------------------
-  minio:
-    image: minio/minio:${MINIO_VERSION:-RELEASE.2024-01-01T16-36-33Z}
-    container_name: minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
+  elasticsearch-init:
+    image: elasticsearch:${ELASTICSEARCH_VERSION:-9.4.4}
+    container_name: elasticsearch-init
+    user: root
     environment:
-      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:? Check .env file}
-    ports:
-      - "9000:9000" # API
-      - "9001:9001" # Console
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?Check .env file}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
     volumes:
-      - minio_data:/data
-      - ./minio/config/config.json:/root/.minio/config.json
+      - ./elasticsearch/init/init.sh:/init.sh
+      - kibana_token:/token
+
+    command: ["/bin/bash", "/init.sh"]
+  # ----------------------------------------------------------------------------
+  # SeaweedFS (Distributed S3 & Object Storage)
+  # ----------------------------------------------------------------------------
+  seaweedfs:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-4.40}
+    container_name: seaweedfs
+    restart: unless-stopped
+    command: "server -dir=/data -master.port=9333 -volume.port=8080 -filer=true -filer.port=8888 -s3=true -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -ip.bind=0.0.0.0"
+    ports:
+      - "${SEAWEEDFS_S3_PORT:-8333}:8333"
+      - "${SEAWEEDFS_FILER_PORT:-8888}:8888"
+      - "${SEAWEEDFS_MASTER_PORT:-9333}:9333"
+      - "${SEAWEEDFS_VOLUME_PORT:-8080}:8080"
+    volumes:
+      - seaweedfs_data:/data
+      - ./seaweedfs/config/s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:9333/cluster/status || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     labels:
-      - "com.microservices.service=minio"
+      - "com.microservices.service=seaweedfs"
       - "com.microservices.tier=data"
 
   # ----------------------------------------------------------------------------
-  # MinIO Init (Bucket Creation)
+  # SeaweedFS Init (Bucket Creation & IAM Setup)
   # ----------------------------------------------------------------------------
-  minio-init:
-    image: minio/mc:latest
-    container_name: minio-init
+  seaweedfs-init:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-4.40}
+    container_name: seaweedfs-init
     depends_on:
-      minio:
+      seaweedfs:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:? Check .env file}
+      SEAWEEDFS_ADMIN_USER: ${SEAWEEDFS_ADMIN_USER:-admin}
+      SEAWEEDFS_ADMIN_PASSWORD: ${SEAWEEDFS_ADMIN_PASSWORD:? Check .env file}
       OBSERVABILITY_USER: ${OBSERVABILITY_USER:-observability-service}
       OBSERVABILITY_SERVICE_PASSWORD: ${OBSERVABILITY_SERVICE_PASSWORD:? Check .env file}
+      APP_SERVICE_USER: ${APP_SERVICE_USER:-app-service}
       APP_SERVICE_PASSWORD: ${APP_SERVICE_PASSWORD:? Check .env file}
+      BACKUP_SERVICE_USER: ${BACKUP_SERVICE_USER:-backup-service}
       BACKUP_SERVICE_PASSWORD: ${BACKUP_SERVICE_PASSWORD:? Check .env file}
     volumes:
-      - ./minio/init/create-bucket.sh:/init/create-bucket.sh
-    entrypoint: ["/bin/bash", "/init/create-bucket.sh"]
+      - ./seaweedfs/init/init.sh:/init/init.sh:ro
+      - ./seaweedfs/config:/etc/seaweedfs
+    entrypoint: ["/bin/sh", "/init/init.sh"]
     restart: "no"
     labels:
-      - "com.microservices.service=minio-init"
+      - "com.microservices.service=seaweedfs-init"
       - "com.microservices.tier=data"

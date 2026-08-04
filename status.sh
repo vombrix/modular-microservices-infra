@@ -75,9 +75,10 @@ check_service "redis" 6379
 check_port 6379 "Redis"
 check_service "elasticsearch" 9200
 check_port 9200 "Elasticsearch"
-check_service "minio" 9000
-check_port 9000 "MinIO API"
-check_port 9001 "MinIO Console"
+check_service "seaweedfs" 8333
+check_port 8333 "SeaweedFS S3 API"
+check_port 8888 "SeaweedFS Filer UI"
+check_port 9333 "SeaweedFS Master UI"
 echo ""
 
 # Messaging Layer

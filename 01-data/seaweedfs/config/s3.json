@@ -1,0 +1,70 @@
+{
+  "identities": [
+    {
+      "name": "admin",
+      "credentials": [
+        {
+          "accessKey": "admin",
+          "secretKey": "hwzTnwDQHd9xl1gnyYog"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "Write",
+        "List",
+        "Tagging"
+      ]
+    },
+    {
+      "name": "observability-service",
+      "credentials": [
+        {
+          "accessKey": "observability-service",
+          "secretKey": "CenlhwZLLdCzTYnh1jB8xV2Q"
+        }
+      ],
+      "actions": [
+        "Read:loki", "Write:loki", "List:loki", "Tagging:loki",
+        "Read:tempo", "Write:tempo", "List:tempo", "Tagging:tempo",
+        "Read:mimir", "Write:mimir", "List:mimir", "Tagging:mimir",
+        "Read:mimir-ruler", "Write:mimir-ruler", "List:mimir-ruler", "Tagging:mimir-ruler",
+        "Read:mimir-alertmanager", "Write:mimir-alertmanager", "List:mimir-alertmanager", "Tagging:mimir-alertmanager",
+        "Read:pyroscope", "Write:pyroscope", "List:pyroscope", "Tagging:pyroscope"
+      ]
+    },
+    {
+      "name": "app-service",
+      "credentials": [
+        {
+          "accessKey": "app-service",
+          "secretKey": "4xSRStUrJuTPmZLYlJpUs9p0"
+        }
+      ],
+      "actions": [
+        "Read:uploads", "Write:uploads", "List:uploads", "Tagging:uploads",
+        "Read:documents", "Write:documents", "List:documents", "Tagging:documents",
+        "Read:images", "Write:images", "List:images", "Tagging:images"
+      ]
+    },
+    {
+      "name": "backup-service",
+      "credentials": [
+        {
+          "accessKey": "backup-service",
+          "secretKey": "DUp6Huk7XNCNImLnGCoqey1O"
+        }
+      ],
+      "actions": [
+        "Read:backups", "Write:backups", "List:backups", "Tagging:backups"
+      ]
+    },
+    {
+      "name": "anonymous",
+      "actions": [
+        "Read:assets", "List:assets",
+        "Read:images", "List:images"
+      ]
+    }
+  ]
+}

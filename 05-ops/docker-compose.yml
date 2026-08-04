@@ -32,7 +32,7 @@ services:
   # Jenkins Controller
   # ----------------------------------------------------------------------------
   jenkins:
-    image: jenkins/jenkins:${JENKINS_VERSION:-latest}
+    image: jenkins/jenkins:${JENKINS_VERSION:-2.555.3}
     container_name: jenkins
     restart: unless-stopped
     privileged: true
@@ -89,7 +89,7 @@ services:
   # Jenkins Agent
   # ----------------------------------------------------------------------------
   jenkins-agent:
-    image: jenkins/inbound-agent:latest
+    image: jenkins/inbound-agent:2.555.3
     container_name: jenkins-agent
     restart: unless-stopped
     depends_on:
@@ -121,7 +121,7 @@ services:
   # Portainer (Container Management)
   # ----------------------------------------------------------------------------
   portainer:
-    image: portainer/portainer-ce:${PORTAINER_VERSION:-2.19.4-alpine}
+    image: portainer/portainer-ce:${PORTAINER_VERSION:-2.39.5}
     container_name: portainer
     restart: unless-stopped
     command: -H unix:///var/run/docker.sock --admin-password-file /run/secrets/portainer_passwd
@@ -147,7 +147,7 @@ services:
   # Portainer Agent
   # ----------------------------------------------------------------------------
   portainer-agent:
-    image: portainer/agent:${PORTAINER_VERSION:-2.19.4-alpine}
+    image: portainer/agent:${PORTAINER_VERSION:-2.39.5}
     container_name: portainer-agent
     restart: unless-stopped
     environment:
@@ -172,7 +172,7 @@ services:
   # Trivy (Security Scanner)
   # ----------------------------------------------------------------------------
   trivy:
-    image: aquasec/trivy:${TRIVY_VERSION:-0.48.0}
+    image: aquasec/trivy:${TRIVY_VERSION:-0.72.0}
     container_name: trivy
     restart: unless-stopped
     command: server --listen 0.0.0.0:8080
@@ -209,7 +209,7 @@ services:
   # Semgrep (SAST Scanner)
   # ----------------------------------------------------------------------------
   semgrep:
-    image: returntocorp/semgrep:latest
+    image: semgrep/semgrep:${SEMGREP_VERSION:-1.172.0}
     container_name: semgrep
     stdin_open: true
     tty: true
@@ -235,7 +235,7 @@ services:
   # Private Docker Registry
   # ----------------------------------------------------------------------------
   registry:
-    image: registry:latest
+    image: registry:${REGISTRY_VERSION:-3.1.1}
     container_name: docker-registry
     restart: unless-stopped
     environment:
@@ -267,7 +267,7 @@ services:
   # MailHog (Email Testing)
   # ----------------------------------------------------------------------------
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:${MAILPIT_VERSION:-v1.24.0}
     container_name: mailpit
     restart: unless-stopped
     ports:

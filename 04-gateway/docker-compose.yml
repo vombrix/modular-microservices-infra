@@ -28,7 +28,7 @@ services:
   # Kong Database Migrations
   # ----------------------------------------------------------------------------
   kong-migrations:
-    image: kong/kong-gateway:${KONG_VERSION:-3.4}
+    image: kong/kong-gateway:${KONG_VERSION:-3.4.2}
     container_name: kong-migrations
     restart: "no"
     command: kong migrations bootstrap
@@ -57,7 +57,7 @@ services:
   # Kong Gateway
   # ----------------------------------------------------------------------------
   kong:
-    image: kong/kong-gateway:${KONG_VERSION:-3.4}
+    image: kong/kong-gateway:${KONG_VERSION:-3.4.2}
     container_name: kong
     restart: unless-stopped
     depends_on:
@@ -122,7 +122,7 @@ services:
   # Keycloak (Identity Management)
   # ----------------------------------------------------------------------------
   keycloak:
-    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-23.0}
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.7.0}
     container_name: keycloak
     restart: unless-stopped
     command: start-dev
@@ -229,7 +229,7 @@ services:
   # Nginx Reverse Proxy
   # ----------------------------------------------------------------------------
   nginx:
-    image: nginx:${NGINX_VERSION:-1.25-alpine}
+    image: nginx:${NGINX_VERSION:-1.30.4}
     container_name: nginx
     restart: unless-stopped
     depends_on:

@@ -18,7 +18,7 @@ A complete, modular Docker Compose infrastructure for local development featurin
 
 The infrastructure is split into 5 modular stacks with **centralized database architecture**:
 
-1. **Data Layer** (`01-data/`) - **Centralized PostgreSQL**, MongoDB, Redis, Elasticsearch, MinIO
+1. **Data Layer** (`01-data/`) - **Centralized PostgreSQL**, MongoDB, Redis, Elasticsearch, SeaweedFS
 2. **Messaging Layer** (`02-messaging/`) - Kafka (KRaft mode - ZooKeeper-free)
 3. **Observability Layer** (`03-observability/`) - LGTM stack (Loki, Grafana, Tempo, Prometheus)
 4. **Gateway Layer** (`04-gateway/`) - Kong (DB-backed), Keycloak, Nginx
@@ -38,7 +38,7 @@ All services communicate through a shared Docker network: `global-infra`
 - **MongoDB 6** - Document database
 - **Redis 7** - In-memory cache & session store
 - **Elasticsearch 8** - Search & analytics engine
-- **MinIO** - S3-compatible object storage
+- **SeaweedFS** - Distributed object storage & AWS S3-compatible gateway
 
 ### Messaging
 - **Apache Kafka 3.6+** - Event streaming platform (KRaft mode - ZooKeeper-free)
@@ -171,7 +171,9 @@ curl http://localhost:8001            # Kong Admin
 - **MongoDB**: `localhost:27017` (user: mongoadmin)
 - **Redis**: `localhost:6379` (pass: see .env)
 - **Elasticsearch**: `http://localhost:9200`
-- **MinIO Console**: `http://localhost:9001` (user: minioadmin)
+- **SeaweedFS Filer UI**: `http://localhost:8888` / `http://filer.darkstar.local`
+- **SeaweedFS S3 Gateway**: `http://localhost:8333` / `http://s3.darkstar.local`
+- **SeaweedFS Master UI**: `http://localhost:9333` / `http://master.darkstar.local`
 
 ### Messaging
 - **Kafka**: `localhost:9092` (internal), `localhost:29092` (external)

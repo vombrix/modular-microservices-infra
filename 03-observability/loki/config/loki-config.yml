@@ -61,9 +61,9 @@ storage_config:
     cache_ttl: 24h
   aws:
     bucketnames: loki
-    endpoint: http://minio:9000
-    access_key_id: ${MINIO_ACCESS_KEY:-minioadmin}
-    secret_access_key: ${MINIO_SECRET_KEY:-minioadmin}
+    endpoint: http://seaweedfs:8333
+    access_key_id: ${MINIO_ACCESS_KEY:-observability-service}
+    secret_access_key: ${MINIO_SECRET_KEY:-observability-service}
     insecure: true
     s3forcepathstyle: true
   filesystem:
